@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Notebook · H. s. anthonyi · Wildlife Biology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600&family=Caveat:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=Fira+Code:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#f6ecd1;--paper-lt:#fdf7e8;--paper-dk:#e8d8ae;
+  --ink:#1c1208;--ink-soft:#3e2e16;
+  --rust:#b04828;--gold:#c08818;--green:#346820;--green-dk:#264e16;
+  --leather:#3e2206;--leather-md:#5c3210;--leather-lt:#7a4818;--spine-c:#2c1602;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0602;font-family:'Source Serif 4',Georgia,serif;color:var(--ink)}
+canvas#leaves{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+
+/* ═══ LANDING SCENE ═══ */
+#landing{
+  position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 90% 70% at 50% 65%,#2a1506 0%,#0e0602 100%);
+  transition:opacity 0.6s;
+}
+#landing.hidden{opacity:0;pointer-events:none;display:none}
+.closed-book{
+  position:relative;cursor:pointer;
+  width:260px;
+  filter:drop-shadow(0 30px 60px rgba(0,0,0,0.8)) drop-shadow(0 8px 24px rgba(0,0,0,0.5));
+  transition:transform 0.3s,filter 0.3s;
+}
+.closed-book:hover{transform:translateY(-6px) rotate(-1deg);filter:drop-shadow(0 40px 80px rgba(0,0,0,0.9)) drop-shadow(0 12px 30px rgba(0,0,0,0.6))}
+.closed-book svg{width:100%;display:block}
+.landing-text{text-align:center;color:rgba(200,155,60,0.65);font-family:'Caveat',cursive;font-size:1.1rem;margin-top:20px;letter-spacing:1px;animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
+.landing-title{font-family:'Playfair Display',serif;font-style:italic;font-size:1.4rem;color:rgba(220,175,80,0.8);text-align:center;margin-bottom:6px}
+
+/* ═══ READING SCENE ═══ */
+#reading{
+  position:fixed;inset:0;z-index:90;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse 90% 70% at 50% 65%,#2a1506 0%,#0e0602 100%);
+  opacity:0;pointer-events:none;transition:opacity 0.5s;
+}
+#reading.visible{opacity:1;pointer-events:all}
+
+/* ═══ BOOK OUTER SHELL ═══ */
+#book-wrap{
+  position:relative;
+  perspective:3000px;
+  filter:drop-shadow(0 40px 80px rgba(0,0,0,0.8)) drop-shadow(0 10px 30px rgba(0,0,0,0.55));
+}
+#book-back{
+  position:absolute;inset:0;border-radius:6px 20px 20px 6px;
+  background:linear-gradient(165deg,var(--leather-lt) 0%,var(--leather) 40%,var(--spine-c) 100%);
+  box-shadow:inset -6px 0 20px rgba(0,0,0,0.5),inset 4px 0 12px rgba(255,255,255,0.03);
+}
+#book-back::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
+  opacity:0.6;pointer-events:none;
+}
+
+/* ═══ SPINE ═══ */
+#spine{
+  position:absolute;top:0;bottom:0;
+  z-index:50;
+  background:linear-gradient(to right,#1e0c02,var(--spine-c) 30%,#341804 70%,#1e0c02);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  box-shadow:inset 3px 0 12px rgba(0,0,0,0.65),inset -3px 0 12px rgba(0,0,0,0.65);
+}
+#spine::before,#spine::after{
+  content:'';position:absolute;left:5px;right:5px;height:2px;
+  background:linear-gradient(to right,transparent,rgba(200,145,50,0.4),transparent);
+}
+#spine::before{top:28px}#spine::after{bottom:28px}
+.sdot{width:7px;height:7px;border-radius:50%;background:radial-gradient(circle,rgba(200,145,50,0.55),rgba(100,55,10,0.25))}
+
+/* ═══ PAGE PANELS ═══ */
+.page-panel{position:absolute;top:0;overflow:hidden}
+#page-left{border-radius:6px 0 0 6px}
+#page-right{border-radius:0 6px 6px 0}
+
+.page-panel::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:3;
+  background:
+    repeating-linear-gradient(transparent 0px,transparent 27px,rgba(150,110,55,0.13) 27px,rgba(150,110,55,0.13) 28px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Crect width='3' height='3' fill='%23f6ecd1'/%3E%3Ccircle cx='0.8' cy='0.8' r='0.35' fill='%23c8a860' opacity='0.22'/%3E%3C/svg%3E");
+}
+#page-left::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:4;background:linear-gradient(to right,rgba(60,30,5,0.16) 0%,transparent 10%)}
+#page-right::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:4;background:linear-gradient(to left,rgba(60,30,5,0.16) 0%,transparent 10%)}
+
+.page-inner{
+  position:relative;z-index:5;
+  width:100%;height:100%;
+  padding:36px 38px 30px;
+  display:flex;flex-direction:column;
+  background:var(--paper);
+}
+.p0 .page-inner{background:#f8efd8}
+.p1 .page-inner{background:#f5e9c4}
+.p2 .page-inner{background:#f6eacc}
+.p3 .page-inner{background:#f4e6c2}
+.p4 .page-inner{background:#f7ecd2}
+.p5 .page-inner{background:#f5e8c6}
+
+/* ═══ FLIP ANIMATION LAYER ═══ */
+#flip-layer{position:absolute;top:0;z-index:60;transform-style:preserve-3d;pointer-events:none;display:none;perspective:2000px}
+.flip-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
+.flip-face-front{}
+.flip-face-back{} /* initial rotateY set by JS per direction */
+.flip-face::before{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:
+    repeating-linear-gradient(transparent 0px,transparent 27px,rgba(150,110,55,0.13) 27px,rgba(150,110,55,0.13) 28px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='3' height='3'%3E%3Crect width='3' height='3' fill='%23f6ecd1'/%3E%3Ccircle cx='0.8' cy='0.8' r='0.35' fill='%23c8a860' opacity='0.22'/%3E%3C/svg%3E");
+}
+.flip-inner{position:relative;z-index:3;width:100%;height:100%;display:flex;flex-direction:column}
+
+/* Forward: right page pivots from LEFT (spine) edge, sweeps right→left */
+@keyframes fFwd{
+  0%  {transform:rotateY(0deg)}
+  100%{transform:rotateY(-180deg)}
+}
+/* Backward: left page pivots from RIGHT (spine) edge, sweeps left→right */
+@keyframes fBack{
+  0%  {transform:rotateY(0deg)}
+  100%{transform:rotateY(180deg)}
+}
+
+/* ═══ CORNER TURN ZONES ═══ */
+.cz{position:absolute;z-index:70;cursor:pointer;opacity:0;transition:opacity 0.25s}
+.cz:hover{opacity:1}
+.cz svg{pointer-events:none;display:block}
+#cz-bl{bottom:0;left:0}
+#cz-br{bottom:0}
+
+#cz-bl:hover::before,#cz-br:hover::before{
+  content:'';position:absolute;border-radius:inherit;
+  background:radial-gradient(circle at var(--ox,50%) var(--oy,50%),rgba(220,175,70,0.22) 0%,transparent 65%);
+  inset:0;pointer-events:none;
+}
+
+/* ═══ OUTSIDE UI ═══ */
+#outside-left,#outside-right{
+  position:absolute;z-index:20;display:flex;flex-direction:column;align-items:center;gap:12px;
+  top:50%;transform:translateY(-50%);
+}
+#outside-right{right:0;transform:translate(100%,-50%);padding-left:18px}
+#outside-left{left:0;transform:translate(-100%,-50%);padding-right:18px}
+
+.ui-btn{
+  background:rgba(80,40,8,0.75);border:1px solid rgba(195,140,45,0.28);
+  color:rgba(215,165,70,0.85);font-family:'Fira Code',monospace;font-size:0.68rem;letter-spacing:1px;
+  padding:11px 16px;cursor:pointer;border-radius:5px;transition:0.18s;white-space:nowrap;text-align:center;
+  backdrop-filter:blur(6px);min-width:110px;
+}
+.ui-btn:hover{background:rgba(110,60,12,0.9);color:#f0d070;border-color:rgba(195,140,45,0.6)}
+.ui-btn:disabled{opacity:0.2;cursor:default}
+.ui-btn.exit{color:rgba(190,90,60,0.85);border-color:rgba(190,90,60,0.28)}
+.ui-btn.exit:hover{background:rgba(110,35,15,0.9);color:#f08060;border-color:rgba(190,90,60,0.65)}
+#pg-label{font-family:'Fira Code',monospace;font-size:0.58rem;letter-spacing:2px;color:rgba(195,140,45,0.38);text-align:center;white-space:nowrap}
+
+/* ═══ LEATHER CORNERS ═══ */
+.lc{position:absolute;z-index:55;pointer-events:none}
+#lc-tl{top:0;left:0}
+#lc-tr{top:0;right:0;transform:scaleX(-1)}
+#lc-bl{bottom:0;left:0;transform:scaleY(-1)}
+#lc-br{bottom:0;right:0;transform:scale(-1)}
+
+/* ═══ TYPOGRAPHY ═══ */
+.pg-tag{font-family:'Fira Code',monospace;font-size:0.6rem;letter-spacing:2px;color:var(--rust);text-transform:uppercase;border-bottom:1px dashed var(--gold);display:inline-block;margin-bottom:10px;padding-bottom:3px}
+h1.ttl{font-family:'Playfair Display',serif;font-style:italic;font-weight:900;font-size:2.4rem;color:var(--green-dk);line-height:1.05;margin-bottom:6px}
+h1.ttl em{color:var(--rust)}
+h2.sec{font-family:'Playfair Display',serif;font-style:italic;font-size:1.35rem;color:var(--green-dk);margin-bottom:8px}
+h3.sub{font-family:'Playfair Display',serif;font-weight:700;font-size:0.96rem;color:var(--ink);margin:12px 0 4px}
+p{font-size:0.83rem;line-height:1.68;color:var(--ink-soft)}
+p+p{margin-top:8px}
+ul{margin-left:1.2rem}
+li{font-size:0.81rem;line-height:1.75;color:var(--ink-soft)}
+strong{color:var(--ink)}
+em.lat{font-style:italic;color:var(--green-dk)}
+
+.hw{font-family:'Caveat',cursive;font-size:1.08rem;color:var(--ink-soft)}
+.hw-sm{font-family:'Caveat',cursive;font-size:0.9rem;color:var(--ink-soft)}
+.quote{background:rgba(190,140,50,0.1);border-left:3px solid var(--gold);padding:8px 13px;margin:11px 0;font-family:'Caveat',cursive;font-size:1.02rem;color:var(--ink-soft)}
+hr.div{border:none;border-top:1px dashed rgba(170,130,60,0.38);margin:10px 0}
+.badge{display:inline-block;background:rgba(170,120,40,0.12);border:1px solid rgba(160,110,30,0.28);padding:2px 9px;border-radius:20px;font-family:'Fira Code',monospace;font-size:0.61rem;color:var(--ink-soft);margin:2px}
+.tag{display:inline-block;font-size:0.59rem;background:rgba(190,140,50,0.12);padding:1px 7px;border-radius:12px;font-family:'Fira Code',monospace;color:var(--rust);border:1px solid rgba(170,100,40,0.22);margin-right:3px}
+.tag.g{background:rgba(50,110,30,0.1);color:var(--green-dk);border-color:rgba(50,110,30,0.22)}
+.stamp{display:inline-block;font-family:'Fira Code',monospace;font-size:0.58rem;letter-spacing:3px;color:var(--rust);border:1px dotted var(--rust);padding:2px 9px;border-radius:20px;background:rgba(190,100,50,0.07);margin-bottom:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:9px 0}
+
+.photos{display:flex;gap:9px;margin:11px 0}
+.pf{flex:1;min-width:0;border:1.5px solid rgba(170,130,60,0.32);background:var(--paper-dk);overflow:hidden;box-shadow:2px 4px 8px rgba(0,0,0,0.1)}
+.pf img{width:100%;height:120px;object-fit:cover;display:block;cursor:zoom-in;transition:opacity 0.2s}
+.pf img:hover{opacity:0.88}
+.pf img.err{display:none}
+.pf .fb{display:none;height:120px;align-items:center;justify-content:center;background:var(--paper-dk);font-family:monospace;font-size:0.65rem;color:rgba(90,60,15,0.48);text-align:center;padding:6px}
+.pf img.err+.fb{display:flex}
+.pf .cap{font-family:'Caveat',cursive;font-size:0.73rem;color:var(--ink-soft);padding:3px 7px;background:var(--paper-lt);text-align:center}
+
+.obs{width:100%;border-collapse:collapse;margin:7px 0}
+.obs td{font-size:0.74rem;padding:5px 7px;border-bottom:1px dashed rgba(170,130,60,0.18);vertical-align:top;color:var(--ink-soft)}
+.obs td:first-child{font-family:'Fira Code',monospace;color:var(--rust);width:22px;font-size:0.64rem}
+.obs td em{color:var(--green-dk)}
+.obs tr:hover td{background:rgba(200,160,60,0.06)}
+
+.bc-row{display:flex;gap:9px;margin:9px 0}
+.bc{flex:1;background:rgba(190,145,50,0.07);border-left:4px solid var(--green);padding:9px 11px;font-size:0.77rem;line-height:1.52;color:var(--ink-soft)}
+.bc.r{border-left-color:var(--rust)}.bc.g{border-left-color:var(--gold)}
+.bc strong{display:block;margin-bottom:3px;font-size:0.77rem;color:var(--ink)}
+
+.dk{background:#1c2616;color:#c8dab0;border:1px solid #3e5e28;padding:13px 15px;margin:11px 0;font-size:0.76rem;line-height:1.62}
+.dk h4{font-family:'Playfair Display',serif;font-style:italic;font-size:0.92rem;color:#8ec060;margin-bottom:7px}
+
+.sticky{background:#fffac0;border-left:3px solid #d8b840;padding:7px 11px;margin:7px 0;font-family:'Caveat',cursive;font-size:0.9rem;color:var(--ink-soft);box-shadow:2px 3px 8px rgba(0,0,0,0.08);transform:rotate(-0.4deg)}
+.sticky.p{background:#fff0ec;border-left-color:#d87070}
+.sticky.b{background:#ecf4fc;border-left-color:#5888a8}
+.sticky.g{background:#ecf5e8;border-left-color:#68a058}
+
+.nc{padding:11px 14px;background:rgba(190,145,50,0.09);border:1px solid rgba(170,125,40,0.26);cursor:pointer;transition:0.15s;font-family:'Caveat',cursive;font-size:0.92rem;color:var(--ink-soft);margin-bottom:7px}
+.nc:hover{background:rgba(190,145,50,0.2);transform:translateX(4px)}
+.nc strong{display:block;font-size:0.9rem;color:var(--ink);margin-bottom:1px}
+
+.pg-foot{margin-top:auto;padding-top:8px;border-top:1px dashed rgba(170,130,60,0.28);display:flex;justify-content:space-between;font-family:'Fira Code',monospace;font-size:0.55rem;color:rgba(110,70,20,0.42);letter-spacing:1px;flex-shrink:0}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-right:3px;scrollbar-width:thin;scrollbar-color:rgba(170,120,40,0.22) transparent}
+.scroll::-webkit-scrollbar{width:3px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(170,120,40,0.22);border-radius:2px}
+.pi{position:relative;z-index:2;width:100%;height:100%;padding:36px 38px 30px;display:flex;flex-direction:column}
+
+.cbtn{background:var(--green-dk);color:var(--paper-lt);border:none;font-family:'Fira Code',monospace;font-size:0.63rem;letter-spacing:1px;padding:6px 13px;border-radius:20px;cursor:pointer;transition:0.15s}
+.cbtn:hover{background:var(--rust)}
+
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(8,4,0,0.8);backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center}
+.modal-ov.open{display:flex}
+.modal-bk{background:var(--paper);width:420px;max-width:92vw;padding:32px 28px 24px;position:relative;box-shadow:0 30px 75px rgba(0,0,0,0.72),inset 0 0 0 1px rgba(170,130,50,0.32);outline:10px solid var(--leather-md);outline-offset:-2px;border-radius:2px}
+.modal-bk::before{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(100,55,10,0.16) 0%,transparent 8%),linear-gradient(to left,rgba(100,55,10,0.16) 0%,transparent 8%);pointer-events:none}
+.modal-bk h3{font-family:'Playfair Display',serif;font-style:italic;font-size:1.35rem;color:var(--green-dk);text-align:center;margin-bottom:5px;position:relative}
+.modal-close{position:absolute;top:9px;right:13px;background:none;border:none;cursor:pointer;font-family:'Fira Code',monospace;font-size:0.69rem;color:var(--rust);letter-spacing:1px;padding:4px 8px;transition:0.15s}
+.modal-close:hover{color:var(--green)}
+.uni-btns{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin:15px 0 7px;position:relative}
+.uni-btn{background:rgba(170,120,40,0.12);border:1.5px solid rgba(160,110,30,0.38);font-family:'Fira Code',monospace;font-size:0.84rem;font-weight:600;padding:10px 20px;border-radius:4px;cursor:pointer;color:var(--ink);transition:0.15s}
+.uni-btn:hover{background:var(--gold);color:#fff}
+.clinks{display:flex;flex-direction:column;gap:9px;margin:13px 0;position:relative}
+.clink{display:flex;align-items:center;gap:9px;background:rgba(170,120,40,0.09);border:1px solid rgba(160,110,30,0.26);padding:10px 15px;text-decoration:none;color:var(--ink);font-family:'Fira Code',monospace;font-size:0.77rem;transition:0.15s;border-radius:3px}
+.clink:hover{background:rgba(170,120,40,0.22)}
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:99999;align-items:center;justify-content:center;cursor:zoom-out}
+.lb.open{display:flex}
+.lb img{max-width:90vw;max-height:87vh}
+.lb-cap{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-family:'Caveat',cursive;font-size:1.05rem;color:#fff;background:rgba(0,0,0,0.5);padding:4px 18px;border-radius:20px;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="leaves"></canvas>
+
+<div id="landing">
+  <div style="display:flex;flex-direction:column;align-items:center;">
+    <div class="landing-title">Field Notebook · Gan Kai Zhe // Homo Sapiens</div>
+    <div class="closed-book" id="openBookBtn" title="Open field notebook">
+      <svg viewBox="0 0 260 360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cv" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#7a4818"/>
+            <stop offset="40%" stop-color="#3e2206"/>
+            <stop offset="100%" stop-color="#2c1602"/>
+          </linearGradient>
+          <linearGradient id="sp" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stop-color="#1e0c02"/>
+            <stop offset="30%" stop-color="#2c1602"/>
+            <stop offset="70%" stop-color="#341804"/>
+            <stop offset="100%" stop-color="#1e0c02"/>
+          </linearGradient>
+          <filter id="leather-tex">
+            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" result="noise"/>
+            <feColorMatrix type="saturate" values="0" in="noise" result="gray"/>
+            <feBlend in="SourceGraphic" in2="gray" mode="multiply" result="blend"/>
+            <feComposite in="blend" in2="SourceGraphic" operator="in"/>
+          </filter>
+        </defs>
+        <rect x="0" y="4" width="32" height="352" rx="4" fill="url(#sp)"/>
+        <rect x="28" y="0" width="228" height="360" rx="12" fill="url(#cv)" filter="url(#leather-tex)"/>
+        <rect x="38" y="10" width="208" height="340" rx="8" fill="none" stroke="rgba(200,145,50,0.2)" stroke-width="1.5"/>
+        <rect x="44" y="16" width="196" height="328" rx="6" fill="none" stroke="rgba(200,145,50,0.12)" stroke-width="0.8"/>
+        <path d="M28,0 L60,0 L60,8 Q36,8 36,32 L28,32 Z" fill="#4a2806" opacity="0.8"/>
+        <path d="M256,0 L224,0 L224,8 Q248,8 248,32 L256,32 Z" fill="#4a2806" opacity="0.8"/>
+        <path d="M28,360 L60,360 L60,352 Q36,352 36,328 L28,328 Z" fill="#4a2806" opacity="0.8"/>
+        <path d="M256,360 L224,360 L224,352 Q248,352 248,328 L256,328 Z" fill="#4a2806" opacity="0.8"/>
+        <rect x="55" y="70" width="178" height="80" rx="4" fill="rgba(240,200,80,0.06)" stroke="rgba(200,145,50,0.2)" stroke-width="0.8"/>
+        <text x="144" y="102" font-family="Georgia, serif" font-style="italic" font-size="15" fill="rgba(210,165,65,0.75)" text-anchor="middle">Homo sapiens</text>
+        <text x="144" y="124" font-family="Georgia, serif" font-style="italic" font-size="13" fill="rgba(180,100,50,0.8)" text-anchor="middle">Gan Kai Zhe</text>
+        <line x1="75" y1="168" x2="213" y2="168" stroke="rgba(200,145,50,0.22)" stroke-width="0.8"/>
+        <text x="144" y="183" font-family="monospace" font-size="7" fill="rgba(200,145,50,0.45)" text-anchor="middle" letter-spacing="2">FIELD NOTEBOOK</text>
+        <text x="144" y="195" font-family="monospace" font-size="6" fill="rgba(200,145,50,0.3)" text-anchor="middle" letter-spacing="1.5">TW-2026</text>
+        <text x="144" y="280" font-size="36" text-anchor="middle" fill="rgba(200,145,50,0.15)">🌿</text>
+        <line x1="5" y1="40" x2="27" y2="40" stroke="rgba(200,145,50,0.3)" stroke-width="0.8"/>
+        <line x1="5" y1="320" x2="27" y2="320" stroke="rgba(200,145,50,0.3)" stroke-width="0.8"/>
+        <rect x="252" y="8" width="4" height="344" rx="1" fill="rgba(245,235,200,0.25)"/>
+        <rect x="249" y="10" width="4" height="340" rx="1" fill="rgba(235,220,180,0.18)"/>
+      </svg>
+    </div>
+    <div class="landing-text">click to open</div>
+  </div>
+</div>
+
+<div id="reading">
+  <div id="book-wrap">
+    <div id="book-back"></div>
+    <div id="spine"></div>
+    <svg id="lc-tl" class="lc" style="position:absolute;top:0;left:0;z-index:55;pointer-events:none" viewBox="0 0 32 32" width="32" height="32"><path d="M0,0 L32,0 L32,9 Q9,9 9,32 L0,32 Z" fill="#4a2806" opacity="0.82"/><path d="M2,2 L28,2 L28,8 Q8,8 8,28 L2,28 Z" fill="none" stroke="rgba(200,145,50,0.32)" stroke-width="0.7"/></svg>
+    <svg id="lc-tr" class="lc" style="position:absolute;top:0;right:0;z-index:55;pointer-events:none;transform:scaleX(-1)" viewBox="0 0 32 32" width="32" height="32"><path d="M0,0 L32,0 L32,9 Q9,9 9,32 L0,32 Z" fill="#4a2806" opacity="0.82"/></svg>
+    <svg id="lc-bl" class="lc" style="position:absolute;bottom:0;left:0;z-index:55;pointer-events:none;transform:scaleY(-1)" viewBox="0 0 32 32" width="32" height="32"><path d="M0,0 L32,0 L32,9 Q9,9 9,32 L0,32 Z" fill="#4a2806" opacity="0.82"/></svg>
+    <svg id="lc-br" class="lc" style="position:absolute;bottom:0;right:0;z-index:55;pointer-events:none;transform:scale(-1)" viewBox="0 0 32 32" width="32" height="32"><path d="M0,0 L32,0 L32,9 Q9,9 9,32 L0,32 Z" fill="#4a2806" opacity="0.82"/></svg>
+
+    <div class="page-panel p0" id="page-left"><div class="page-inner" id="left-inner"></div></div>
+    <div class="page-panel p1" id="page-right"><div class="page-inner" id="right-inner"></div></div>
+
+    <div id="flip-layer">
+      <div class="flip-face flip-face-front"><div class="pi" id="ff-inner"></div></div>
+      <div class="flip-face flip-face-back"><div class="pi" id="fb-inner"></div></div>
+    </div>
+
+    <div class="cz" id="cz-bl">
+      <svg width="90" height="90" viewBox="0 0 90 90"><polygon points="0,90 90,90 0,0" fill="rgba(200,145,50,0.11)"/><text x="6" y="82" font-family="Georgia,serif" font-size="13" fill="rgba(200,145,50,0.55)" font-style="italic">◂</text><text x="8" y="68" font-family="Caveat,cursive" font-size="9" fill="rgba(200,145,50,0.35)">prev</text></svg>
+    </div>
+    <div class="cz" id="cz-br">
+      <svg width="90" height="90" viewBox="0 0 90 90" style="transform:scaleX(-1)"><polygon points="0,90 90,90 0,0" fill="rgba(200,145,50,0.11)"/><text x="6" y="82" font-family="Georgia,serif" font-size="13" fill="rgba(200,145,50,0.55)" font-style="italic">▸</text><text x="8" y="68" font-family="Caveat,cursive" font-size="9" fill="rgba(200,145,50,0.35)">next</text></svg>
+    </div>
+
+    <div id="outside-left">
+      <button class="ui-btn exit" id="btn-exit">✕ close book</button>
+      <button class="ui-btn" id="btn-prev" disabled>◂ previous</button>
+      <div id="pg-label">pg. i – ii</div>
+    </div>
+    <div id="outside-right">
+      <button class="ui-btn" id="btn-next">next ▸</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-ov" id="uniModal">
+  <div class="modal-bk">
+    <button class="modal-close" id="uniClose">✕ CLOSE</button>
+    <h3>✧ Academic Horizons ✧</h3>
+    <p class="hw-sm" style="text-align:center;margin-top:5px;">prospective programs · wildlife biology &amp; zoology</p>
+    <hr class="div" style="position:relative">
+    <div class="uni-btns">
+      <button class="uni-btn" data-url="https://www.nus.edu.sg/">NUS<br><small style="font-weight:400">Singapore</small></button>
+      <button class="uni-btn" data-url="https://www.uq.edu.au/">UQ<br><small style="font-weight:400">Queensland</small></button>
+      <button class="uni-btn" data-url="https://www.ubc.ca/">UBC<br><small style="font-weight:400">Canada</small></button>
+    </div>
+    <p class="hw-sm" style="text-align:center;color:rgba(110,70,20,0.42);position:relative">click any to visit</p>
+  </div>
+</div>
+<div class="modal-ov" id="contactModal">
+  <div class="modal-bk">
+    <button class="modal-close" id="contactClose">✕ CLOSE</button>
+    <h3>✉ DM Me LOL</h3>
+    <p class="hw-sm" style="text-align:center;margin-top:5px;">research, field work, or collaborations</p>
+    <hr class="div" style="position:relative">
+    <div class="clinks">
+      <a href="mailto:anto10281533@gmail.com" class="clink">📧 &nbsp;anto10281533@gmail.com</a>
+      <a href="https://github.com/CarrotParrot2/carrotparrot2.github.io" target="_blank" class="clink">🔬 &nbsp;https://github.com/CarrotParrot2/carrotparrot2.github.io</a>
+    </div>
+  </div>
+</div>
+<div class="lb" id="lightbox"><img id="lb-img" src="" alt=""><div class="lb-cap" id="lb-cap"></div></div>
+
+<script>
+const S=[
+// 0 - Cover + TOC
+{l:`
+<div class="stamp">FIELD NOTEBOOK · TAIWAN & MALAYSIA · CAT# TW-2026</div>
+<h1 class="ttl">Homo sapiens<br><em>Gan Kai Zhe</em></h1>
+<div class="hw" style="border-left:3px solid var(--gold);padding-left:11px;margin:9px 0">escape-minded · book-hungry · dirt-under-nails dreamer</div>
+<hr class="div">
+<div class="photos">
+  <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Solenopsis_invicta_worker.jpg/320px-Solenopsis_invicta_worker.jpg" alt="S. invicta"><div class="fb">S. invicta</div><div class="cap">fire ant · lab colony</div></div>
+  <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Bungarus_multicinctus.jpg/320px-Bungarus_multicinctus.jpg" alt="Banded krait"><div class="fb">B. multicinctus</div><div class="cap">banded krait · field</div></div>
+  <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Pica_pica_-_Malham_-_Andy_Morffew.jpg/320px-Pica_pica_-_Malham_-_Andy_Morffew.jpg" alt="taiwan blue magpie"><div class="fb">Urocissa caerulea</div><div class="cap">taiwan blue magpie</div></div>
+</div>
+<div class="quote">"The one more understands the more one realizes the vastness of his ignorance."</div>
+<hr class="div" style="margin-top:auto">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:9px">
+  <span class="hw-sm">Academia Sinica · Wego High School<br>active 2026</span>
+  <button class="cbtn" id="contactOpenBtn">✉ contact</button>
+</div>
+<div class="pg-foot"><span>FIELD NOTEBOOK · GAN KAI ZHE</span><span>pg. i</span></div>
+`,r:`
+<div class="pg-tag">✦ TABLE OF CONTENTS</div>
+<h2 class="sec">Field Notebook Index</h2>
+<hr class="div">
+<div class="scroll">
+<div class="nc" data-spread="1"><strong>I. Species Dossier — pg. 1–4</strong>Identity, gallery, associates</div>
+<div class="nc" data-spread="3"><strong>II. Primary Research — pg. 5–8</strong>Chemical basis of social polymorphism in Solenopsis invicta</div>
+<div class="nc" data-spread="5"><strong>III. Field Zoology — pg. 9–14</strong>Encounter logs</div>
+<div class="nc" data-spread="8"><strong>IV. Technical Methods — pg. 15–17</strong>Field & lab toolkit · full skills</div>
+<div class="nc" data-spread="10"><strong>V. Achievements & Education — pg. 18–20</strong>Awards · publications · academic formation · programs</div>
+<div class="nc" data-spread="11"><strong>VI. Other Projects — pg. 21–23</strong>Outreach · taxidermy · robotics · science communication</div>
+<div class="nc" id="uniOpenBtn"><strong>✧ Prospective Programs</strong>NUS · UQ · Melbourne · UBC — click to explore</div>
+<div class="sticky b" style="margin-top:10px">📌 click a corner to flip pages · use buttons outside to navigate</div>
+</div>
+<div class="pg-foot"><span>TABLE OF CONTENTS</span><span>pg. ii</span></div>
+`},
+// 1 - Who I am + gallery
+{l:`
+<div class="pg-tag">✦ I · SPECIES DOSSIER</div>
+<h2 class="sec">Who I am &amp; what drives me</h2>
+<hr class="div">
+<div class="scroll">
+  <p>High school student/researcher at <strong>Taipei Wego Private Senior High School</strong>, currently interning at <strong>Academia Sinica's Wildlife Ecology Lab</strong>. I like animals, though the feeling isn’t always mutual. I read a lot—ASOIAF is the best I’ve gotten through so far, and I like Dostoevsky because it doesn’t feel like a deep well so much as a shallow pond where you still end up seeing yourself. I draw sometimes, not particularly well, and I write poetry more for the process than anything else. I just like making things, especially when they leave room for me to wrestle with them. </p>
+  <div class="quote">"The magic of joy lies in the searching of it."</div>
+  <h3 class="sub">Core skills &amp; tools</h3>
+  <div style="margin-top:7px;line-height:2.1">
+    <span class="badge">field surveys</span>
+    <span class="badge">animal handling</span>
+    <span class="badge">Python · R</span>
+    <span class="badge">wildlife tracking</span>
+    <span class="badge">herpetology</span>
+    <span class="badge">ornithology</span>
+    <span class="badge">scientific writing</span>
+    <span class="badge">Onshape CAD</span>
+    <span class="badge">colony husbandry</span>
+  </div>
+  <h3 class="sub">Field philosophy</h3>
+  <p>I really don't like how sometimes necessary sacrifice has to be made. Like how dissecting mice is essential to one's first-hand experience. But I will do what I must.</p>
+</div>
+<div class="pg-foot"><span>I. SPECIES DOSSIER</span><span>pg. 1</span></div>
+`,r:`
+<div class="pg-tag">📸 FIELD GALLERY</div>
+<h2 class="sec">In the lab &amp; in the field</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Solenopsis_invicta_worker.jpg/320px-Solenopsis_invicta_worker.jpg" alt="S. invicta fire ant"><div class="fb">🔥 S. invicta</div><div class="cap">ant colony · husbandry</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Bungarus_multicinctus.jpg/320px-Bungarus_multicinctus.jpg" alt="Banded krait"><div class="fb">🐍 krait</div><div class="cap">B. multicinctus · foothills</div></div>
+  </div>
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Dasyatis_pastinaca.jpg/320px-Dasyatis_pastinaca.jpg" alt="Invasive stingray"><div class="fb">🌊 stingray</div><div class="cap">invasive ray · Kaohsiung</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Atta_cephalotes_carrying_leaf.jpg/320px-Atta_cephalotes_carrying_leaf.jpg" alt="Atta cephalotes"><div class="fb">🐜 A. cephalotes</div><div class="cap">leafcutter fungus garden</div></div>
+  </div>
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Pica_pica_-_Malham_-_Andy_Morffew.jpg/320px-Pica_pica_-_Malham_-_Andy_Morffew.jpg" alt="Pica pica magpie"><div class="fb">🐦 magpie</div><div class="cap">Eurasian magpie · nesting</div></div>
+    <div class="pf" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(190,145,50,0.07);border-style:dashed"><div style="font-size:1.6rem;margin-bottom:4px">📷</div><div class="cap" style="background:none;font-size:0.72rem;text-align:center;color:rgba(80,50,15,0.35)">add your photo</div></div>
+  </div>
+  <div class="sticky g" style="margin-top:9px;font-size:0.82rem">🌿 click any image to zoom · field observations Taiwan &amp; Academia Sinica 2025–26</div>
+</div>
+<div class="pg-foot"><span>FIELD GALLERY</span><span>pg. 2</span></div>
+`},
+// 2 - Field Kit & Associates (structure fixed, text unchanged)
+{l:`
+<div class="pg-tag">✦ I · FIELD KIT &amp; COLLECTION</div>
+<h2 class="sec">What I carry &amp; keep</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="bc-row"><div class="bc"><strong>🧪 Lab essentials</strong>a functional brain</div></div>
+  <div class="bc-row" style="margin-top:0"><div class="bc g"><strong>🌿 Field essentials</strong>flashlight · sketchbook · phone · binoculars · binoculars</div></div>
+  <div class="bc-row" style="margin-top:0"><div class="bc r"><strong>⚠️ Safety protocols</strong>none. we ball.</div></div>
+  <h3 class="sub">Associates</h3>
+  <table class="obs" style="margin-top:7px">
+    <tr><td>🐜</td><td><em>Solenopsis invicta</em> — "Apple"</td><td>monogyne colony · established, now founding a new queen line</td></tr>
+    <tr><td>🐜</td><td><em>Atta cephalotes</em> — "Coffee Bean"</td><td>turning 3 years old this year · producing alates</td></tr>
+    <tr><td>🦎</td><td>Leopard gecko — "Tangerine"</td><td>similar to Orange, but a bit more yellow</td></tr>
+    <tr><td>🦎</td><td>Leopard gecko — "Orange"</td><td>similar to Tangerine, but a bit less yellow</td></tr>
+    <tr><td>🐍</td><td>Ball python — "Latte"</td><td>strongest of today</td></tr>
+    <tr><td>🐍</td><td>Ball python — "'nilla" (vanilla)</td><td>light banana morph, picky eater</td></tr>
+    <tr><td>🐕</td><td>Dog — "Mocca"</td><td>strongest in history</td></tr>
+  </table>
+</div>
+<div class="pg-foot"><span>I. FIELD KIT &amp; COLLECTION</span><span>pg. 3</span></div>
+`,r:`
+<div class="pg-tag">🌿 I · WILDLIFE BIOLOGY</div>
+<h2 class="sec">Why wildlife biology?</h2>
+<hr class="div">
+<div class="scroll">
+  <p>A crested serpent eagle apparently has excellent aim when pooping, speaking from personal experience here. I've also been hissed at by banded kraits, been dive-bombed by the same family of nesting magpies every May through September, and once pulled a pearl stingray out of a river. In hindsight, that’s not really smart.
+But to be honest, I don’t mind it at all.
+I don't mind being pecked, scratched, bitten, or hissed at. I don’t mind thawing frozen mice and feeding the remaining white blob to Latte the ball python. Actually, I do mind that a little.</p>
+  <p>It isn't glamorous, and honestly, a little revulsion is part of the experience. It’s a messy reality that can't be captured on a glowing screen with tidy p-values. This data is unpredictable; it has teeth and a bad attitude. But a dataset that fights back is one you have to take seriously. 
+And maybe that's the point. The best science isn't always conducted under fluorescent lights with sterile gloves and controlled variables. Sometimes it smells like river mud. Every close call is a reminder that the natural world does not care about your hypothesis, it simply is. Wildlife biology isn't a career I reasoned my way into. In the future, I hope to contribute to animal behavior and conservation research that embraces the unpredictability of the living world rather than reducing it to numbers alone.
+</p>
+  <div class="quote">"People are so preoccupied with whether they could, they didn't stop to think if they should."</div>
+</div>
+<div class="pg-foot"><span>WILDLIFE BIOLOGY</span><span>pg. 4</span></div>
+`},
+// 3 - Primary Research (Fire Ant Social Polymorphism) — page 5 & 6
+{l:`
+<div class="pg-tag">🔬 II · PRIMARY RESEARCH</div>
+<h2 class="sec">Chemical basis of social polymorphism in <em>Solenopsis invicta</em></h2>
+<hr class="div">
+<div class="scroll">
+  <p><strong>Abstract:</strong> Red imported fire ant colonies exist as monogyne (single queen) or polygyne (multiple queens). BB genotype workers normally execute extra queens, but when mixed with Bb workers (even 10-15% Bb), BB workers begin accepting multiple queens. This study investigates two candidate chemical signals: cuticular hydrocarbons and venom sac piperidines. Using controlled colony mixing, transfer assays, and GC-MS analysis, we test whether these compounds induce queen-acceptance behavior in BB workers.</p>
+  <div class="quote">"A single molecule, broadcast in silence, ends a queen's reign — or begins a new one."</div>
+  <h3 class="sub">Research questions & hypotheses</h3>
+  <ul>
+    <li><strong>Q1:</strong> Does contact with live or dead Bb workers alter BB cuticular hydrocarbon profiles?</li>
+    <li><strong>Q2:</strong> Which specific compounds differ between monogyne and polygyne CHC fingerprints?</li>
+    <li><strong>Q3:</strong> Can venom sac alkaloid extracts alone trigger the same behavioral shift?</li>
+  </ul>
+  <p><strong>Hypotheses:</strong> (1) Chemical mimicry – BB workers acquire Bb-like CHC profiles after contact. (2) Signal interference – venom alkaloids disrupt nestmate recognition. (3) Dual‑signal – CHCs provide identity, piperidines provide acceptance/rejection instruction.</p>
+  <div class="bc-row">
+    <div class="bc"><strong>🧬 Indirect Genetic Effects</strong>Minority genotypes (10-15% Bb) can reprogram colony social structure via chemical mediators — a striking example of IGEs.</div>
+    <div class="bc r"><strong>🧪 Approach</strong>Microcolony assays ± physical contact, GC-MS profiling, venom sac dissection, and behavioral scoring.</div>
+  </div>
+</div>
+<div class="pg-foot"><span>II. PRIMARY RESEARCH</span><span>pg. 5</span></div>
+`,r:`
+<div class="pg-tag">🔬 II · METHODS &amp; EQUIPMENT</div>
+<h2 class="sec">Ant lab, GC-MS &amp; experimental design</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">Laboratory infrastructure</h3>
+  <p><strong>Superorganism room:</strong> 28°C, 30% RH. Colonies housed in Fluon‑lined plastic trays (60×30×15cm). Artificial nests: foil‑wrapped petri dishes with moist plaster substrate. Fed 10% honey water + frozen insects (mealworms, crickets).</p>
+  <p><strong>GC-MS (Shimadzu QP2020):</strong> DB-5 column, 60→300°C at 8°C/min. CHCs extracted with hexane + 0.1% docosane internal standard. SPME headspace sampling for volatiles.</p>
+  <h3 class="sub">Microcolony assay design</h3>
+  <ul>
+    <li><strong>Positive control (+):</strong> 300 BB workers + 120 live Bb workers (mesh barrier for 48h, then full contact before queen introduction).</li>
+    <li><strong>Negative control (−):</strong> 300 BB workers only.</li>
+    <li><strong>Open‑lid treatment:</strong> Full physical contact allowed for 24h before adding two polygyne queens.</li>
+    <li><strong>Venom sac extraction:</strong> Bb workers chilled, dissected under stereomicroscope, venom glands stored at -20°C. Extract will be applied to BB workers to test behavioral induction.</li>
+  </ul>
+  <div class="sticky" style="margin-top:9px">🧪 28 positive/negative control replicates completed. Venom sac dissection ongoing.</div>
+</div>
+<div class="pg-foot"><span>METHODS &amp; EQUIPMENT</span><span>pg. 6</span></div>
+`},
+// 4 - Preliminary results & future directions (page 7 & 8)
+{l:`
+<div class="pg-tag">🔬 II · PRELIMINARY RESULTS</div>
+<h2 class="sec">Conversion rates & venom sac dissection</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">Queen acceptance after mixed exposure</h3>
+  <table class="obs" style="margin-top:0">
+    <tr><th style="text-align:left">Treatment</th><th>n</th><th>Conversion (2 queens alive)</th><th>Failure (≥1 dead)</th></tr>
+    <tr><td>Open‑lid (full contact)</td><td>6</td><td>5 (83.3%)</td><td>1 (16.7%)</td></tr>
+    <tr><td>Mesh barrier (antennal only)</td><td>8</td><td>2 (25%)</td><td>6 (75%)</td></tr>
+    <tr><td>Negative control</td><td>14</td><td>0 (0%)</td><td>14 (100%)</td></tr>
+  </table>
+  <p>Complete physical interaction dramatically increases conversion (Fisher's exact, p<0.01). Results replicate Zeng et al. 2021. No conversion in negative controls — BB workers always executed extra queens.</p>
+  <h3 class="sub">Venom sac dissection</h3>
+  <p>Successfully extracted venom sacs from 40 Bb workers. Glands are transparent spherical structures near the sting. Extracts pooled and stored at -20°C. Next step: apply to BB workers in isolation and test queen acceptance.</p>
+  <div class="bc-row">
+    <div class="bc"><strong>📊 Table A–P details</strong>Open‑lid: groups A,C,E,G,I converted; K partially converted (one queen dead). Mesh: only E and M converted; others fully rejected.</div>
+  </div>
+  <div class="sticky">🐜 GC-MS pending: CHC profiles of BB before/after Bb contact will reveal chemical changes underlying behavioral shift.</div>
+</div>
+<div class="pg-foot"><span>PRELIMINARY RESULTS</span><span>pg. 7</span></div>
+`,r:`
+<div class="pg-tag">🌿 II · EXPECTED OUTCOMES &amp; IMPACT</div>
+<h2 class="sec">From molecules to colony‑level decisions</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">Expected findings</h3>
+  <ul>
+    <li>Open‑lid conversion rate confirmed >80%; mesh barrier <30%.</li>
+    <li>GC‑MS will identify 3–5 discriminant CHC peaks separating monogyne and polygyne workers.</li>
+    <li>Venom sac extracts will induce queen acceptance in naive BB workers, identifying piperidine alkaloids as key chemical mediators.</li>
+  </ul>
+  <h3 class="sub">Innovation & applications</h3>
+  <ul>
+    <li><strong>RIFA biocontrol:</strong> Synthetic queen‑supergene pheromone could trigger colony self‑destruction (queen execution) without broad‑spectrum insecticides.</li>
+    <li><strong>Early detection:</strong> CHC fingerprinting to rapidly identify high‑risk polygyne invasive populations.</li>
+    <li><strong>IGE mechanism:</strong> First direct chemical demonstration of how minority genotypes reprogram social structure via cuticular and venom compounds.</li>
+  </ul>
+  <div class="dk">
+    <h4>✶ Indirect Genetic Effects in real time</h4>
+    A few Bb workers change the colony’s "queen acceptance rule" without changing anyone's genotype — purely through surface chemistry. This is IGEs made visible.
+  </div>
+  <div class="quote">"Chemistry is the silent language of the superorganism. Decode it, and you can rewrite the colony's constitution."</div>
+</div>
+<div class="pg-foot"><span>EXPECTED OUTCOMES &amp; IMPACT</span><span>pg. 8</span></div>
+`},
+// 5 - Field encounter logs (unchanged)
+{l:`
+<div class="pg-tag">🌿 III · FIELD ENCOUNTER LOG</div>
+<h2 class="sec">Encounter transcriptions · 2024–2026</h2>
+<hr class="div">
+<div class="scroll">
+  <p class="hw-sm" style="margin-bottom:9px">field log · Taiwan · selected observations</p>
+  <table class="obs">
+    <tr><td>01</td><td><em>Pica pica</em><br><span style="font-size:0.64rem;color:var(--rust)">Eurasian Magpie</span></td><td><span class="tag">aerial strike</span> territorial dive-bombing, nesting season – 8m perimeter defense. strikes from rear blind spot at 2.3m/s. documented 4 consecutive attacks on same trail section.</td></tr>
+    <tr><td>02</td><td><em>Bungarus multicinctus</em><br><span style="font-size:0.64rem;color:var(--rust)">Banded Krait</span></td><td><span class="tag" style="color:#a03020;background:rgba(160,50,30,0.1);border-color:rgba(160,50,30,0.2)">elapid</span> body flattening + hissing at 0.8m. motionless ~4 min, slow lateral retreat. no strike. maintained &gt;2m throughout.</td></tr>
+    <tr><td>03</td><td><em>Spilornis cheela</em><br><span style="font-size:0.64rem;color:var(--rust)">Serpent Eagle</span></td><td><span class="tag g">defecation</span> precise canopy drop onto tracking zone. 3 ind./200m. wide hat protocol now mandatory.</td></tr>
+    <tr><td>04</td><td><em>Dasyatidae sp.</em><br><span style="font-size:0.64rem;color:var(--rust)">Invasive stingray</span></td><td><span class="tag g">extraction</span> mudflat wading, dorsal grip, tail whip neutralized. relocated to deeper tidal channel.</td></tr>
+    <tr><td>05</td><td><em>Solenopsis invicta</em><br><span style="font-size:0.64rem;color:var(--rust)">RIFA lab</span></td><td><span class="tag g">colony dynamics</span> Apple colony monogyne stable. New queen line being established.</td></tr>
+  </table>
+  <div class="sticky p" style="margin-top:9px">🐍 Krait protocol: never step over logs blindly. maintain visual contact at all times.</div>
+  <div class="sticky" style="margin-top:4px">🐦 Magpie dive zone: avoid trail section 7 during May–June nesting season.</div>
+</div>
+<div class="pg-foot"><span>III. FIELD ENCOUNTER LOG</span><span>pg. 9</span></div>
+`,r:`
+<div class="pg-tag">🌿 III · FIELD NOTES CONT.</div>
+<h2 class="sec">More encounter notes</h2>
+<hr class="div">
+<div class="scroll">
+  <table class="obs">
+    <tr><td>06</td><td><em>Cuora flavomarginata</em><br><span style="font-size:0.64rem;color:var(--rust)">Box turtle</span></td><td><span class="tag g">estivation</span> leaf litter burial in dry season. 3 individuals tracked across 0.4ha home range. conservation flag species.</td></tr>
+    <tr><td>07</td><td><em>Gekko gecko</em><br><span style="font-size:0.64rem;color:var(--rust)">Tokay gecko</span></td><td><span class="tag">adhesion</span> setal pad contact mechanics under 4× magnification. van der Waals force alone — no adhesive secretion.</td></tr>
+    <tr><td>08</td><td><em>Rana swinhoana</em><br><span style="font-size:0.64rem;color:var(--rust)">Swinhoe's frog</span></td><td><span class="tag g">calling</span> advertisement call dominant freq. 1.8 kHz. chorus density 12 ind./100m stream.</td></tr>
+    <tr><td>09</td><td><em>Polyrhachis sp.</em><br><span style="font-size:0.64rem;color:var(--rust)">Weaver ant</span></td><td><span class="tag">silk arch.</span> larval silk used to bind leaves. colony relocated nest 3× in 8 weeks.</td></tr>
+    <tr><td>10</td><td><em>Pelodiscus sinensis</em><br><span style="font-size:0.64rem;color:var(--rust)">Softshell turtle</span></td><td><span class="tag">basking</span> river margin. agricultural runoff impact flagged.</td></tr>
+  </table>
+  <div class="sticky g" style="margin-top:9px">🦅 Serpent eagle: carry wide-brim hat + umbrella where raptor density &gt; 2 ind./200m</div>
+  <div class="sticky b">🌿 Field note: quiet observation changes behavior less than you'd think. stillness is a method.</div>
+</div>
+<div class="pg-foot"><span>FIELD NOTES CONT.</span><span>pg. 10</span></div>
+`},
+// 6 - Field photography (unchanged)
+{l:`
+<div class="pg-tag">📸 III · FIELD PHOTOGRAPHY</div>
+<h2 class="sec">Documented species</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Pica_pica_-_Malham_-_Andy_Morffew.jpg/320px-Pica_pica_-_Malham_-_Andy_Morffew.jpg" alt="Pica pica"><div class="fb">🐦 magpie</div><div class="cap">Pica pica · territorial display</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Bungarus_multicinctus.jpg/320px-Bungarus_multicinctus.jpg" alt="Bungarus multicinctus"><div class="fb">🐍 krait</div><div class="cap">B. multicinctus · foothills</div></div>
+  </div>
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Dasyatis_pastinaca.jpg/320px-Dasyatis_pastinaca.jpg" alt="stingray"><div class="fb">🌊 stingray</div><div class="cap">Dasyatidae sp. · estuary</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Atta_cephalotes_carrying_leaf.jpg/320px-Atta_cephalotes_carrying_leaf.jpg" alt="leafcutter ant"><div class="fb">🐜 leafcutter</div><div class="cap">Atta cephalotes · fungus garden</div></div>
+  </div>
+  <div class="photos">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Solenopsis_invicta_worker.jpg/320px-Solenopsis_invicta_worker.jpg" alt="fire ant"><div class="fb">🔥 fire ant</div><div class="cap">S. invicta · monogyne worker</div></div>
+    <div class="pf" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(180,140,50,0.07);border-style:dashed"><div style="font-size:1.5rem">📷</div><div class="cap" style="background:none;color:rgba(80,50,15,0.35);font-size:0.7rem">your field photo</div></div>
+  </div>
+</div>
+<div class="pg-foot"><span>FIELD PHOTOGRAPHY</span><span>pg. 11</span></div>
+`,r:`
+<div class="pg-tag">🧠 III · BEHAVIORAL ANNOTATIONS</div>
+<h2 class="sec">Observed traits &amp; tolerance</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="bc-row">
+    <div class="bc"><strong>🔥 high risk tolerance</strong>Repeated voluntary contact with venomous fauna — kraits, fire ants, stingrays — with minimal stress response. Treats each encounter as data collection.</div>
+    <div class="bc r"><strong>🧤 barehanded extraction</strong>Invasive stingray neutralized by instinctive dorsal grip angle. No net, no tools.</div>
+  </div>
+  <div class="bc-row" style="margin-top:0">
+    <div class="bc g"><strong>📓 obsessive notetaking</strong>Margins filled with behavioral hypotheses, cross‑references, and taxonomic notes at 11pm.</div>
+    <div class="bc"><strong>🧬 genus‑level recognition</strong>Can distinguish sympatric <em>Trimeresurus</em> and <em>Bungarus</em> from silhouette alone at dusk.</div>
+  </div>
+  <div class="dk" style="margin-top:11px">
+    <h4>✶ Stoic field ethics</h4>
+    Separate what you control from what you can't. Record under any circumstance. Stay calm during krait standoffs. The field doesn't accommodate attachment to outcomes — only accurate observation.
+  </div>
+  <div class="sticky g" style="margin-top:9px">🦅 Serpent eagle: carry wide-brim hat + umbrella where raptor density &gt; 2 ind./200m</div>
+</div>
+<div class="pg-foot"><span>BEHAVIORAL ANNOTATIONS</span><span>pg. 12</span></div>
+`},
+// 7 - Herpetology & Wetland surveys (unchanged)
+{l:`
+<div class="pg-tag">🐍 III · HERPETOLOGY SURVEY</div>
+<h2 class="sec">Taiwan reptile &amp; amphibian survey</h2>
+<hr class="div">
+<div class="scroll">
+  <p>Taiwan's subtropical forests host a dense, understudied herpetofauna compressed between high-altitude montane zones and coastal brackish habitats. Active survey since 2023 across Taipei municipal forests, Yangmingshan, and southern estuary systems.</p>
+  <h3 class="sub">Survey methodology</h3>
+  <ul>
+    <li><strong>Transect walking</strong> — standardized 200m transects at dawn/dusk</li>
+    <li><strong>Coverboard arrays</strong> — 20×40cm boards, checked 3×/week</li>
+    <li><strong>Acoustic monitoring</strong> — automated recorders for anuran chorus surveys</li>
+    <li><strong>Mark-recapture</strong> — toe-clip or paint mark for home range estimates</li>
+  </ul>
+  <h3 class="sub">Species documented (selected)</h3>
+  <table class="obs" style="margin-top:7px">
+    <tr><td>🐍</td><td><em>Bungarus multicinctus</em></td><td>banded krait · elapid · n=4 encounters</td></tr>
+    <tr><td>🐍</td><td><em>Trimeresurus stejnegeri</em></td><td>bamboo pitviper · n=7 encounters</td></tr>
+    <tr><td>🦎</td><td><em>Gekko gecko</em></td><td>tokay gecko · adhesion study subject</td></tr>
+    <tr><td>🦎</td><td><em>Eutropis multifasciata</em></td><td>many-lined sun skink · urban margin</td></tr>
+    <tr><td>🐸</td><td><em>Rana swinhoana</em></td><td>Swinhoe's frog · stream-breeding</td></tr>
+    <tr><td>🐸</td><td><em>Bufo bankorensis</em></td><td>Bankor toad · forest litter</td></tr>
+    <tr><td>🐢</td><td><em>Cuora flavomarginata</em></td><td>box turtle · conservation flag species</td></tr>
+  </table>
+</div>
+<div class="pg-foot"><span>HERPETOLOGY SURVEY</span><span>pg. 13</span></div>
+`,r:`
+<div class="pg-tag">🌊 III · WETLAND &amp; ESTUARY</div>
+<h2 class="sec">Taipei wetland &amp; estuary work</h2>
+<hr class="div">
+<div class="scroll">
+  <p>Volunteer field guide for Taipei municipal wetland biodiversity surveys. Guanadu wetland and Danshui estuary — two of Taiwan's most significant migratory bird staging areas and benthic invertebrate habitats.</p>
+  <h3 class="sub">Bird count contributions</h3>
+  <table class="obs" style="margin-top:7px">
+    <tr><td>🦅</td><td><em>Spilornis cheela</em></td><td>crested serpent eagle · 3 ind./200m transect</td></tr>
+    <tr><td>🦆</td><td><em>Egretta garzetta</em></td><td>little egret · 28 ind. mudflat count</td></tr>
+    <tr><td>🐦</td><td><em>Limosa limosa</em></td><td>black-tailed godwit · migratory, Sept peak</td></tr>
+    <tr><td>🐦</td><td><em>Tringa totanus</em></td><td>common redshank · year-round resident</td></tr>
+    <tr><td>🦜</td><td><em>Lonchura punctulata</em></td><td>scaly-breasted munia · agricultural edge</td></tr>
+  </table>
+  <h3 class="sub" style="margin-top:11px">Invasive species work</h3>
+  <p>Stingray (<em class="lat">Dasyatidae sp.</em>) relocation from brackish inlet to deeper tidal channel. 3 individuals documented in estuary shallows — possible breeding population establishing. Flagged for wildlife authority.</p>
+  <div class="quote" style="margin-top:9px">"the mudflat at low tide is a library of encounters — you just have to walk slowly."</div>
+</div>
+<div class="pg-foot"><span>WETLAND &amp; ESTUARY SURVEY</span><span>pg. 14</span></div>
+`},
+// 8 - Lab & computational methods (unchanged)
+{l:`
+<div class="pg-tag">⚒️ IV · FIELD &amp; LAB METHODS</div>
+<h2 class="sec">Wildlife toolkit</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">Field sampling</h3>
+  <ul>
+    <li><strong>Transect & coverboard surveys</strong> — standardized VES protocols, shelter arrays for amphibians/reptiles</li>
+    <li><strong>Acoustic monitoring</strong> — AudioMoth deployment, spectrogram analysis, anuran call classification</li>
+    <li><strong>Mark‑recapture</strong> — toe‑clip (amphibians) / paint mark (turtles) for home range estimation</li>
+    <li><strong>GPS tracking</strong> — handheld GPS + QGIS for movement mapping</li>
+  </ul>
+  <h3 class="sub" style="margin-top:11px">Data analysis</h3>
+  <ul>
+    <li>Occupancy models (<em>unmarked</em> R package) – detection probability, site covariates</li>
+    <li>Movement analysis – QGIS path integration, home range (MCP, KDE)</li>
+    <li>Community composition – NMDS, PERMANOVA</li>
+    <li>Python automation – data cleaning, batch processing of acoustic files</li>
+  </ul>
+  <div class="sticky" style="margin-top:11px">🔊 AudioMoth update: 5 units deployed, 1200h of recordings processed, 7 anuran species identified via manual spectrogram.</div>
+</div>
+<div class="pg-foot"><span>FIELD &amp; LAB METHODS</span><span>pg. 15</span></div>
+`,r:`
+<div class="pg-tag">💻 IV · COMPUTATIONAL TOOLS</div>
+<h2 class="sec">Data analysis &amp; open‑source hardware</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">R / Python for ecology</h3>
+  <ul>
+    <li><strong>Occupancy modeling</strong> — <em>unmarked</em>, <em>presence</em> packages; single‑season, multi‑season models</li>
+    <li><strong>Movement & home range</strong> — <em>adehabitatHR</em> (MCP, KDE), <em>move</em> for trajectory analysis</li>
+    <li><strong>Community ecology</strong> — NMDS (<em>vegan</em>), species accumulation curves</li>
+    <li><strong>Acoustic analysis</strong> — spectrograms in Python (<em>librosa</em>, <em>scipy</em>), batch classification via CNN</li>
+  </ul>
+  <h3 class="sub" style="margin-top:11px">Open‑source field sensors</h3>
+  <p>Raspberry Pi Zero W + AudioMoth — automated anuran acoustic survey at 5 Yangmingshan sites. Python pipeline: bandpass filter → spectrogram → manual verification (CNN classifier in progress).</p>
+  <h3 class="sub" style="margin-top:11px">GIS & mapping</h3>
+  <p>QGIS for habitat layer integration, transect mapping, and kernel density estimation of encounter locations. All data georeferenced with phone GPS + external logger.</p>
+  <div style="margin-top:9px;display:flex;flex-wrap:wrap">
+    <span class="badge">Python</span><span class="badge">R</span><span class="badge">QGIS</span><span class="badge">AudioMoth</span><span class="badge">unmarked</span><span class="badge">adehabitat</span><span class="badge">vegan</span><span class="badge">TensorFlow Lite</span>
+  </div>
+</div>
+<div class="pg-foot"><span>COMPUTATIONAL TOOLS</span><span>pg. 16</span></div>
+`},
+// 9 - Full skills (unchanged)
+{l:`
+<div class="pg-tag">⚒️ IV · SKILLS OVERVIEW</div>
+<h2 class="sec">Full technical profile</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="two">
+    <div>
+      <h3 class="sub" style="margin-top:0">Field ecology</h3>
+      <ul>
+        <li>Visual encounter surveys (herps, birds)</li>
+        <li>Coverboard array design & deployment</li>
+        <li>Acoustic monitoring (AudioMoth)</li>
+        <li>Mark‑recapture (amphibians, turtles)</li>
+        <li>GPS tracking & QGIS mapping</li>
+        <li>Invasive species removal</li>
+        <li>Animal handling (snakes, geckos, rays)</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">Computational & lab</h3>
+      <ul>
+        <li>Python (pandas, scikit-learn, librosa)</li>
+        <li>R (unmarked, vegan, adehabitat)</li>
+        <li>Occupancy / NMDS / KDE</li>
+        <li>GC‑MS (basic training)</li>
+        <li>Onshape CAD</li>
+        <li>Raspberry Pi / Arduino</li>
+      </ul>
+    </div>
+  </div>
+  <div class="two" style="margin-top:7px">
+    <div>
+      <h3 class="sub" style="margin-top:0">Communication</h3>
+      <ul>
+        <li>Scientific manuscript writing</li>
+        <li>High school seminar speaker</li>
+        <li>Teen naturalist education</li>
+        <li>Field guide volunteering</li>
+        <li>Data visualization (ggplot2, matplotlib)</li>
+      </ul>
+    </div>
+    <div>
+      <h3 class="sub" style="margin-top:0">Husbandry</h3>
+      <ul>
+        <li>Ant colony maintenance (S. invicta, Atta)</li>
+        <li>Leopard gecko & ball python care</li>
+        <li>Fungus garden cultivation</li>
+        <li>Ethanol preservation</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<div class="pg-foot"><span>SKILLS OVERVIEW</span><span>pg. 17</span></div>
+`,r:`
+<div class="pg-tag">🏆 V · ACHIEVEMENTS</div>
+<h2 class="sec">Recognition &amp; milestones</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="bc-row">
+    <div class="bc g" style="padding:10px 12px"><strong>🥈 Taiwan International Science Fair 2025</strong>2nd place · Ecology division. "Habitat use of banded krait in urban‑adjacent forests." Presented to 12‑judge panel, Academia Sinica + NTU.</div>
+  </div>
+  <div class="bc-row">
+    <div class="bc g" style="padding:10px 12px"><strong>🏛️ Academia Sinica Young Researcher Grant 2025</strong>One of 8 high school students selected nationally for independent research funding and lab access.</div>
+  </div>
+  <div class="bc-row">
+    <div class="bc" style="padding:10px 12px"><strong>📄 Taiwan Journal of Biodiversity — abstract under review</strong>"Edge effects on herpetofauna occupancy in Taipei basin forests." Submitted Jan 2026. First HS‑author submission from Taiwan in 4 years.</div>
+  </div>
+  <div class="bc-row">
+    <div class="bc r" style="padding:10px 12px"><strong>🤖 VEX Robotics — 3rd &amp; 4th place regional</strong>Custom drivebase gearbox design. Designed entirely in Onshape, fabricated in‑house.</div>
+  </div>
+  <div class="bc-row">
+    <div class="bc" style="padding:10px 12px"><strong>🎤 High school science seminar speaker</strong>Invited talk — "Field ecology & wildlife conservation in Taiwan" · 200+ student audience · Jianguo HS 2025.</div>
+  </div>
+</div>
+<div class="pg-foot"><span>V. ACHIEVEMENTS</span><span>pg. 18</span></div>
+`},
+// 10 - Education & programs (unchanged)
+{l:`
+<div class="pg-tag">🎓 V · EDUCATION &amp; TRAINING</div>
+<h2 class="sec">Academic formation</h2>
+<hr class="div">
+<div class="scroll">
+  <div class="bc-row"><div class="bc g"><strong>🏫 Taipei Municipal Jianguo High School</strong>2023–present. Science track. Top 5% in biology &amp; chemistry.</div></div>
+  <div class="bc-row"><div class="bc"><strong>🔬 Academia Sinica Wildlife Ecology Lab</strong>Independent placement, mentored by Dr. Chen YH. Full field access: transects, coverboards, acoustic recorders, GPS units.</div></div>
+  <div class="bc-row"><div class="bc g"><strong>💻 Self‑directed computational training</strong>Python (pandas, scikit‑learn, librosa), R (unmarked, vegan, adehabitat). Coursera Data Science specialization · QGIS workshops.</div></div>
+  <div class="bc-row"><div class="bc"><strong>🌿 Field training</strong>Herpetofauna transect methodology. Wetland bird count protocol (Taiwan Wild Bird Federation). Teen naturalist workshop facilitation.</div></div>
+  <div class="bc-row"><div class="bc r"><strong>🤖 VEX Robotics Team 2022–2024</strong>CAD lead. Taught myself Onshape — no prior engineering instruction.</div></div>
+  <div class="quote" style="margin-top:11px">"science communication &amp; the field notebook are the same act — making the invisible legible."</div>
+</div>
+<div class="pg-foot"><span>EDUCATION &amp; TRAINING</span><span>pg. 19</span></div>
+`,r:`
+<div class="pg-tag">✧ V · PROSPECTIVE PROGRAMS</div>
+<h2 class="sec">Graduate program targets</h2>
+<hr class="div">
+<div class="scroll">
+  <p>Seeking graduate programs in wildlife ecology, conservation biology, or herpetology. Target start: 2027–2028.</p>
+  <div class="bc-row" style="margin-top:9px"><div class="bc g"><strong>🇸🇬 NUS — Singapore</strong>Dept. of Biological Sciences — tropical ecology group. Southeast Asian herpetofauna focus.</div></div>
+  <div class="bc-row"><div class="bc"><strong>🇦🇺 UQ — Queensland</strong>School of Biological Sciences. Wildlife conservation & invasive species management.</div></div>
+  <div class="bc-row"><div class="bc"><strong>🇦🇺 Melbourne</strong>School of BioSciences — conservation ecology & movement ecology.</div></div>
+  <div class="bc-row"><div class="bc"><strong>🇨🇦 UBC</strong>Biodiversity Research Centre — computational ecology & landscape genetics.</div></div>
+  <button class="cbtn" id="uniOpenBtn2" style="margin-top:13px;display:block;width:100%;padding:9px;font-size:0.7rem">✧ Open program links →</button>
+</div>
+<div class="pg-foot"><span>PROSPECTIVE PROGRAMS</span><span>pg. 20</span></div>
+`},
+// 11 - Other projects (unchanged)
+{l:`
+<div class="pg-tag">🌱 VI · DATA ECOLOGY &amp; OUTREACH</div>
+<h2 class="sec">Adjacent endeavors</h2>
+<hr class="div">
+<div class="scroll">
+  <h3 class="sub" style="margin-top:0">📡 Bioacoustics sensor network</h3>
+  <p>Open-source field sensors: Raspberry Pi Zero W + AudioMoth at 5 Yangmingshan forest sites. Automated anuran species classifier using CNN (Python, TensorFlow Lite). Processing 8h recordings overnight.</p>
+  <h3 class="sub" style="margin-top:11px">🌿 Teen naturalist workshops</h3>
+  <p>Lead monthly 2h workshops for secondary students on insect ID, ecological methods, Taiwan herpetofauna. ~25 participants per session. Partner with Taiwan Wild Bird Federation.</p>
+  <div class="photos" style="margin-top:11px">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Atta_cephalotes_carrying_leaf.jpg/320px-Atta_cephalotes_carrying_leaf.jpg" alt="field monitoring"><div class="fb">🛠️ field sensor</div><div class="cap">sensor deployment</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Pica_pica_-_Malham_-_Andy_Morffew.jpg/320px-Pica_pica_-_Malham_-_Andy_Morffew.jpg" alt="wetland"><div class="fb">🌊 wetland</div><div class="cap">Guanadu wetland survey</div></div>
+  </div>
+  <h3 class="sub" style="margin-top:9px">📊 GC-MS automation pipeline</h3>
+  <p>Python scripts automating GC-MS peak alignment (from previous project). Reduces manual curation from ~6h to ~45min per batch of 40 samples.</p>
+</div>
+<div class="pg-foot"><span>VI. DATA ECOLOGY &amp; OUTREACH</span><span>pg. 21</span></div>
+`,r:`
+<div class="pg-tag">⚙️ VI · ROBOTICS &amp; ENGINEERING</div>
+<h2 class="sec">Mechanical literacy for biologists</h2>
+<hr class="div">
+<div class="scroll">
+  <p>Competitive robotics as structural problem-solving training — all design in Onshape with no prior engineering instruction. Mechanical literacy now feeds directly into custom arthropod observation chamber builds.</p>
+  <h3 class="sub">VEX robotics 2022–2024</h3>
+  <ul>
+    <li>CAD lead for 3-year team run</li>
+    <li>Custom 5:1 gearbox for 4-motor drivebase</li>
+    <li>8 gearbox iterations before final design</li>
+    <li>3rd place regional 2023 · 4th place 2024</li>
+  </ul>
+  <h3 class="sub" style="margin-top:11px">Custom observation chambers (Onshape)</h3>
+  <ul>
+    <li><strong>Ant foraging arena</strong> — 30×30×15cm PETG, humidity baffle, substrate depth control</li>
+    <li><strong>Field terrarium</strong> — collapsible HDPE, snake-safe mesh lid, O-ring seal</li>
+    <li><strong>Acoustic isolation chamber</strong> — EVA foam inner lining for clean field recordings</li>
+  </ul>
+  <div class="photos" style="margin-top:11px">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/VEX_Robotics_competition.jpg/320px-VEX_Robotics_competition.jpg" alt="VEX robotics"><div class="fb">🤖 VEX</div><div class="cap">competition chassis · regional</div></div>
+    <div class="pf" style="display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(180,140,50,0.07);border-style:dashed"><div style="font-size:1.5rem;margin-bottom:4px">📐</div><div class="cap" style="background:none;color:rgba(80,50,15,0.35)">Onshape CAD render</div></div>
+  </div>
+</div>
+<div class="pg-foot"><span>ROBOTICS &amp; ENGINEERING</span><span>pg. 22</span></div>
+`},
+// 12 - Back cover (unchanged)
+{l:`
+<div class="pg-tag">📄 VI · SCIENCE COMMUNICATION</div>
+<h2 class="sec">Making the invisible legible</h2>
+<hr class="div">
+<div class="scroll">
+  <p>Science communication is field work by other means. The same discipline — careful observation, honest description, attention to what is actually happening rather than what you hoped for — applies whether writing field notes at a krait encounter or explaining occupancy models to secondary school students.</p>
+  <h3 class="sub">Work so far</h3>
+  <ul>
+    <li><strong>Science seminar speaker</strong> — "Field ecology & wildlife conservation in Taiwan" · 200+ audience · Jianguo HS 2025</li>
+    <li><strong>Teen naturalist workshops</strong> — monthly, ~25 participants · insect ID, herpetofauna, field methods</li>
+    <li><strong>Taiwan Journal of Biodiversity abstract</strong> — co-authored with Dr. Chen · under review · 2025</li>
+    <li><strong>TISF oral presentation</strong> — 2nd place jury citation</li>
+    <li><strong>iNaturalist records</strong> — 300+ field observations, species ID verified</li>
+  </ul>
+  <h3 class="sub" style="margin-top:11px">In progress</h3>
+  <ul>
+    <li>Open-source anuran classifier documentation (GitHub)</li>
+    <li>Field guide to common Taiwan herpetofauna for teen naturalist program</li>
+    <li>Krait occupancy manuscript for peer-reviewed journal</li>
+  </ul>
+</div>
+<div class="pg-foot"><span>SCIENCE COMMUNICATION</span><span>pg. 23</span></div>
+`,r:`
+<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:17px">
+  <div class="stamp" style="font-size:0.55rem">END OF FIELD NOTEBOOK · TW-2026</div>
+  <h2 class="sec" style="font-size:1.65rem;text-align:center">H. s. anthonyi</h2>
+  <div class="hw" style="font-size:1.08rem">"observer of superorganisms<br>&amp; collector of tiny wonders"</div>
+  <hr class="div" style="width:60%">
+  <p style="font-size:0.8rem;color:rgba(80,55,15,0.55)">Academia Sinica Wildlife Ecology Lab<br>Taipei Municipal Jianguo High School · 2026</p>
+  <div class="photos" style="width:100%;margin-top:7px">
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Solenopsis_invicta_worker.jpg/320px-Solenopsis_invicta_worker.jpg" alt="S. invicta"><div class="fb">🔥</div><div class="cap">S. invicta</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Bungarus_multicinctus.jpg/320px-Bungarus_multicinctus.jpg" alt="krait"><div class="fb">🐍</div><div class="cap">B. multicinctus</div></div>
+    <div class="pf"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Atta_cephalotes_carrying_leaf.jpg/320px-Atta_cephalotes_carrying_leaf.jpg" alt="leafcutter"><div class="fb">🐜</div><div class="cap">A. cephalotes</div></div>
+  </div>
+  <button class="cbtn" id="contactOpenBtn2" style="margin-top:9px;padding:9px 22px">✉ get in touch</button>
+  <div class="pg-foot" style="margin-top:auto;width:100%"><span>FIELD NOTEBOOK</span><span>pg. 24</span></div>
+</div>
+`}
+];
+
+// LAYOUT & INTERACTION (same as original working version, unchanged)
+const BW = document.getElementById('book-wrap');
+const PL = document.getElementById('page-left');
+const PR = document.getElementById('page-right');
+const SP = document.getElementById('spine');
+const FL = document.getElementById('flip-layer');
+const FFI= document.getElementById('ff-inner');
+const FBI= document.getElementById('fb-inner');
+const LI = document.getElementById('left-inner');
+const RI = document.getElementById('right-inner');
+const CZBL = document.getElementById('cz-bl');
+const CZBR = document.getElementById('cz-br');
+const OL = document.getElementById('outside-left');
+const OR = document.getElementById('outside-right');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const pgLabel = document.getElementById('pg-label');
+const SPINE_W = 46;
+let PW=0, PH=0;
+
+function sizeBook() {
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const maxW = Math.min(vw*0.88 - SPINE_W, 1400);
+  const maxH = vh * 0.90;
+  let pw = Math.min(maxW/2, maxH*(500/680));
+  pw = Math.max(320, Math.min(pw, 680));
+  const ph = Math.round(pw*(680/500));
+  PW=pw; PH=ph;
+  const totalW = pw*2 + SPINE_W;
+  BW.style.width = totalW+'px';
+  BW.style.height = ph+'px';
+  PL.style.width=pw+'px'; PL.style.height=ph+'px'; PL.style.left='0';
+  PR.style.width=pw+'px'; PR.style.height=ph+'px'; PR.style.left=(pw+SPINE_W)+'px';
+  SP.style.left=pw+'px'; SP.style.width=SPINE_W+'px';
+  FL.style.width=pw+'px'; FL.style.height=ph+'px';
+  CZBL.style.width='90px'; CZBL.style.height='90px';
+  CZBR.style.width='90px'; CZBR.style.height='90px';
+  CZBR.style.right='0'; CZBR.style.left='auto';
+  document.documentElement.style.setProperty('--PW', pw+'px');
+  document.documentElement.style.setProperty('--PH', ph+'px');
+}
+function positionControls() {
+  const hw = (PW*2+SPINE_W)/2;
+  OL.style.right = 'calc(50% + '+(hw+16)+'px)';
+  OL.style.left = 'auto';
+  OR.style.left  = 'calc(50% + '+(hw+16)+'px)';
+  OR.style.right = 'auto';
+}
+window.addEventListener('resize', ()=>{ sizeBook(); positionControls(); });
+
+let cur=0, flipping=false;
+const total=S.length;
+const tints=['p0','p1','p2','p3','p4','p5'];
+function applyTints(idx){
+  tints.forEach(t=>{PL.classList.remove(t);PR.classList.remove(t)});
+  PL.classList.add(tints[idx%tints.length]);
+  PR.classList.add(tints[(idx+1)%tints.length]);
+}
+function renderSpread(idx){
+  LI.innerHTML=S[idx].l;
+  RI.innerHTML=S[idx].r;
+  applyTints(idx);
+  btnPrev.disabled=(idx===0);
+  btnNext.disabled=(idx===total-1);
+  const lp=idx===0?'i':String(idx*2-1);
+  const rp=idx===0?'ii':String(idx*2);
+  pgLabel.textContent='pg. '+lp+' – '+rp;
+  bindAll();
+}
+function flipTo(nextIdx){
+  if(flipping||nextIdx<0||nextIdx>=total) return;
+  flipping=true;
+  const fwd=nextIdx>cur;
+  FL.style.display='block';
+  FL.style.height=PH+'px';
+  FL.style.width=PW+'px';
+  FL.style.animation='none';
+  FL.style.transform='none';
+
+  const front=document.querySelector('.flip-face-front');
+  const back =document.querySelector('.flip-face-back');
+
+  if(fwd){
+    FL.style.left=(PW+SPINE_W)+'px';
+    FL.style.transformOrigin='left center';
+    front.style.borderRadius='0 6px 6px 0';
+    back.style.borderRadius='6px 0 0 6px';
+    back.style.transform='rotateY(180deg)';
+    FFI.innerHTML=S[cur].r;
+    FBI.innerHTML=S[nextIdx].l;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      FL.style.animation='fFwd 0.65s cubic-bezier(0.4,0,0.25,1) forwards';
+    }));
+  } else {
+    FL.style.left='0';
+    FL.style.transformOrigin='right center';
+    front.style.borderRadius='6px 0 0 6px';
+    back.style.borderRadius='0 6px 6px 0';
+    back.style.transform='rotateY(-180deg)';
+    FFI.innerHTML=S[cur].l;
+    FBI.innerHTML=S[nextIdx].r;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      FL.style.animation='fBack 0.65s cubic-bezier(0.4,0,0.25,1) forwards';
+    }));
+  }
+  FFI.style.padding=FBI.style.padding='36px 38px 30px';
+
+  FL.addEventListener('animationend',function h(){
+    FL.removeEventListener('animationend',h);
+    FL.style.display='none';
+    FL.style.animation='none';
+    FL.style.transform='';
+    cur=nextIdx;
+    renderSpread(cur);
+    flipping=false;
+  },{once:true});
+}
+function bindAll(){
+  document.querySelectorAll('[data-spread]').forEach(el=>{
+    el.addEventListener('click',()=>{const s=parseInt(el.dataset.spread);if(!isNaN(s))flipTo(s);});
+  });
+  ['contactOpenBtn','contactOpenBtn2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('click',()=>openModal('contactModal'));
+  });
+  ['uniOpenBtn','uniOpenBtn2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('click',()=>openModal('uniModal'));
+  });
+  document.querySelectorAll('.pf img').forEach(img=>{
+    img.addEventListener('error',function(){this.classList.add('err');});
+    img.addEventListener('click',function(){
+      if(this.classList.contains('err')) return;
+      document.getElementById('lb-img').src=this.src;
+      document.getElementById('lb-cap').textContent=this.closest('.pf')?.querySelector('.cap')?.textContent||this.alt;
+      document.getElementById('lightbox').classList.add('open');
+    });
+  });
+}
+btnNext.addEventListener('click',()=>flipTo(cur+1));
+btnPrev.addEventListener('click',()=>flipTo(cur-1));
+CZBL.addEventListener('click',()=>flipTo(cur-1));
+CZBR.addEventListener('click',()=>flipTo(cur+1));
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') flipTo(cur+1);
+  if(e.key==='ArrowLeft' ||e.key==='ArrowUp')   flipTo(cur-1);
+  if(e.key==='Escape'){
+    closeModal('uniModal'); closeModal('contactModal');
+    document.getElementById('lightbox').classList.remove('open');
+  }
+});
+let tx=0;
+BW.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+BW.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tx;
+  if(Math.abs(dx)>50) dx<0?flipTo(cur+1):flipTo(cur-1);
+});
+document.getElementById('btn-exit').addEventListener('click',()=>{
+  const r=document.getElementById('reading');
+  const l=document.getElementById('landing');
+  r.style.transition='opacity 0.4s';
+  r.style.opacity='0';
+  setTimeout(()=>{
+    r.classList.remove('visible');
+    r.style.opacity='';
+    r.style.transition='';
+    l.style.display='flex';
+    l.style.opacity='0';
+    l.classList.remove('hidden');
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      l.style.transition='opacity 0.4s';
+      l.style.opacity='1';
+      setTimeout(()=>{ l.style.transition=''; }, 420);
+    }));
+    cur=0; renderSpread(0);
+  }, 420);
+});
+document.getElementById('openBookBtn').addEventListener('click',()=>{
+  const l=document.getElementById('landing');
+  const r=document.getElementById('reading');
+  l.style.transition='opacity 0.35s';
+  l.style.opacity='0';
+  setTimeout(()=>{
+    l.classList.add('hidden');
+    l.style.opacity='';
+    l.style.transition='';
+    r.classList.add('visible');
+  }, 360);
+});
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.getElementById('uniClose').addEventListener('click',()=>closeModal('uniModal'));
+document.getElementById('contactClose').addEventListener('click',()=>closeModal('contactModal'));
+['uniModal','contactModal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))closeModal(id);});
+});
+document.querySelectorAll('.uni-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{const u=btn.dataset.url;if(u)window.open(u,'_blank');});
+});
+document.getElementById('lightbox').addEventListener('click',e=>{
+  if(e.target===document.getElementById('lightbox')||e.target===document.getElementById('lb-img'))
+    document.getElementById('lightbox').classList.remove('open');
+});
+// falling leaves (unchanged)
+(function(){
+  const c=document.getElementById('leaves'),ctx=c.getContext('2d');
+  function rsz(){c.width=innerWidth;c.height=innerHeight;} rsz(); addEventListener('resize',rsz);
+  const COLS=['#b04828','#c08818','#346820','#a85060','#705888','#488030','#a07010'];
+  const SH=[
+    (x,s)=>{x.beginPath();x.ellipse(0,0,s*.45,s*.2,0,0,Math.PI*2);x.fill();},
+    (x,s)=>{x.beginPath();x.moveTo(0,-s*.45);x.bezierCurveTo(s*.3,-s*.2,s*.35,s*.2,0,s*.45);x.bezierCurveTo(-s*.35,s*.2,-s*.3,-s*.2,0,-s*.45);x.fill();},
+    (x,s)=>{x.beginPath();x.moveTo(0,-s*.5);x.quadraticCurveTo(s*.4,0,0,s*.5);x.quadraticCurveTo(-s*.4,0,0,-s*.5);x.fill();}
+  ];
+  function mk(init){return{x:Math.random()*c.width,y:init?Math.random()*c.height:-20,sz:8+Math.random()*14,sp:.4+Math.random()*.9,dr:(Math.random()-.5)*.6,rot:Math.random()*Math.PI*2,rs:(Math.random()-.5)*.04,sw:Math.random()*Math.PI*2,ss:.01+Math.random()*.015,sa:.4+Math.random()*1,col:COLS[Math.random()*COLS.length|0],a:.3+Math.random()*.28,sh:Math.random()*3|0};}
+  let lv=Array.from({length:20},()=>mk(true));
+  (function anim(){
+    ctx.clearRect(0,0,c.width,c.height);
+    lv.forEach(l=>{
+      l.sw+=l.ss;l.x+=l.dr+Math.sin(l.sw)*l.sa;l.y+=l.sp;l.rot+=l.rs;
+      if(l.y>c.height+20)Object.assign(l,mk(false),{x:Math.random()*c.width});
+      ctx.save();ctx.translate(l.x,l.y);ctx.rotate(l.rot);
+      ctx.globalAlpha=l.a;ctx.fillStyle=l.col;SH[l.sh](ctx,l.sz);
+      ctx.globalAlpha=l.a*.4;ctx.strokeStyle='rgba(0,0,0,.22)';ctx.lineWidth=.5;
+      ctx.beginPath();ctx.moveTo(0,-l.sz*.4);ctx.lineTo(0,l.sz*.4);ctx.stroke();
+      ctx.restore();
+    });
+    requestAnimationFrame(anim);
+  })();
+})();
+
+document.getElementById('outside-left').style.position='absolute';
+document.getElementById('outside-right').style.position='absolute';
+document.getElementById('outside-left').style.top='50%';
+document.getElementById('outside-right').style.top='50%';
+document.getElementById('outside-left').style.transform='translateY(-50%)';
+document.getElementById('outside-right').style.transform='translateY(-50%)';
+sizeBook();
+positionControls();
+renderSpread(0);
+</script>
+</body>
+</html>
