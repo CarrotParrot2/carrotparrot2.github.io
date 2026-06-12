@@ -1,0 +1,2191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Push Back — Team Battle Mode</title>
+  <style>
+    html,body{height:100%;margin:0;background:#07121a;color:#ddd;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    .wrap{display:grid;grid-template-columns:1fr 380px;gap:12px;height:100%;padding:12px}
+    canvas{background:#041018;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.6);display:block}
+    .panel{background:#0b1620;padding:12px;border-radius:8px;overflow:auto}
+    h1{font-size:18px;margin:0 0 8px}
+    .stat{font-family:monospace;background:#071223;padding:6px;border-radius:6px}
+    .hint{font-size:13px;color:#9aa}
+    label{display:block;margin-top:8px;font-size:13px}
+    input[type=range]{width:100%}
+    .small{font-size:12px;color:#9ab}
+    button{margin-top:8px;padding:6px 8px;border-radius:6px;background:#143047;color:#cde;border:0}
+    .side-switch{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .driveMode{padding:6px 10px;border-radius:6px;background:#183;cursor:pointer}
+    .timerDisplay{position:absolute;right:48px;top:20px;padding:6px 10px;border-radius:6px;background:rgba(0,0,0,0.45);font-family:monospace}
+    .player-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .player-stat{background:#0a1522;padding:8px;border-radius:6px}
+    .player-stat h3{margin:0 0 6px;font-size:14px;color:#8ab}
+    .blue-team{color:#4af}
+    .red-team{color:#f55}
+    .player-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+    .player-setting{background:#0a1522;padding:8px;border-radius:6px}
+    .player-setting h3{margin:0 0 6px;font-size:14px}
+    .red-flash{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,0,0,0.3);pointer-events:none;opacity:0;transition:opacity 0.1s}
+    .team-indicator{position:absolute;top:20px;left:20px;padding:6px 10px;border-radius:6px;font-family:monospace;font-weight:bold}
+    .blue-indicator{background:rgba(0,100,255,0.6);color:#aaf}
+    .red-indicator{background:rgba(255,50,50,0.6);color:#faa}
+    .countdown{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:120px;font-weight:bold;color:#fff;text-shadow:0 0 20px rgba(0,0,0,0.8);z-index:100;pointer-events:none;opacity:0;transition:opacity 0.3s}
+    .mode-indicator{position:absolute;top:20px;left:50%;transform:translateX(-50%);padding:6px 10px;border-radius:6px;font-family:monospace;font-size:14px;background:rgba(0,0,0,0.6)}
+    .practice-indicator{background:rgba(255,165,0,0.6);color:#ffa}
+    .pass-through-indicator{background:rgba(0,200,200,0.6);color:#aff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="position:relative">
+      <canvas id="world"></canvas>
+      <div id="timerOverlay" class="timerDisplay">01:45</div>
+      <div id="redFlash" class="red-flash"></div>
+      <div id="teamIndicator" class="team-indicator blue-indicator">Blue Team (P1)</div>
+      <div id="countdown" class="countdown"></div>
+      <div id="modeIndicator" class="mode-indicator"></div>
+    </div>
+    <div class="panel">
+      <h1>Push Back — Team Battle Mode</h1>
+      <p>Two teams battle! Blue Team (Player 1) vs Red Team (Player 2). Score your team's balls in goals. Scoring opponent's balls gives them points!</p>
+
+      <div class="player-stats">
+        <div class="player-stat">
+          <h3 class="blue-team">Blue Team (Player 1)</h3>
+          <div>Balls in Robot: <span id="held1">0</span>/<span id="maxCapacity1">5</span></div>
+          <div>Blue Balls: <span id="blueHeld1">0</span></div>
+          <div>Red Balls: <span id="redHeld1">0</span></div>
+          <div>Score: <span id="score1">0</span></div>
+          <div>Intake: <span id="intake1">OFF</span></div>
+          <div>Pass-Through: <span id="passThrough1">ON</span></div>
+          <div>Scoring: <span id="scoringSwitch1">BLOCKED</span></div>
+        </div>
+        <div class="player-stat">
+          <h3 class="red-team">Red Team (Player 2)</h3>
+          <div>Balls in Robot: <span id="held2">0</span>/<span id="maxCapacity2">5</span></div>
+          <div>Blue Balls: <span id="blueHeld2">0</span></div>
+          <div>Red Balls: <span id="redHeld2">0</span></div>
+          <div>Score: <span id="score2">0</span></div>
+          <div>Intake: <span id="intake2">OFF</span></div>
+          <div>Pass-Through: <span id="passThrough2">ON</span></div>
+          <div>Scoring: <span id="scoringSwitch2">BLOCKED</span></div>
+        </div>
+      </div>
+
+      <div class="player-settings">
+        <div class="player-setting">
+          <h3 class="blue-team">Blue Team Settings</h3>
+          <label>Max speed: <span id="speedVal1">250</span> px/s</label>
+          <input id="speedRange1" type="range" min="50" max="500" step="10" value="300">
+
+          <label>Acceleration (linear): <span id="accelVal1">5.0</span></label>
+          <input id="accelRange1" type="range" min="0.5" max="20" step="0.1" value="7.5">
+
+          <label>Angular acceleration: <span id="angAccelVal1">6.0</span></label>
+          <input id="angAccelRange1" type="range" min="0.5" max="20" step="0.1" value="7.0">
+          
+          <label>Max Ball Capacity: <span id="capacityVal1">5</span></label>
+          <input id="capacityRange1" type="range" min="1" max="10" step="1" value="8">
+          
+          <div class="side-switch">
+            <div>Drive mode:</div>
+            <div id="driveModeBtn1" class="driveMode">Tank</div>
+          </div>
+        </div>
+        <div class="player-setting">
+          <h3 class="red-team">Red Team Settings</h3>
+          <label>Max speed: <span id="speedVal2">250</span> px/s</label>
+          <input id="speedRange2" type="range" min="50" max="500" step="10" value="250">
+
+          <label>Acceleration (linear): <span id="accelVal2">5.0</span></label>
+          <input id="accelRange2" type="range" min="0.5" max="20" step="0.1" value="5.0">
+
+          <label>Angular acceleration: <span id="angAccelVal2">6.0</span></label>
+          <input id="angAccelRange2" type="range" min="0.5" max="20" step="0.1" value="6.0">
+          
+          <label>Max Ball Capacity: <span id="capacityVal2">5</span></label>
+          <input id="capacityRange2" type="range" min="1" max="10" step="1" value="5">
+          
+          <div class="side-switch">
+            <div>Drive mode:</div>
+            <div id="driveModeBtn2" class="driveMode">Tank</div>
+          </div>
+        </div>
+      </div>
+
+      <label>Push Strength: <span id="pushStrengthVal">1.5</span></label>
+      <input id="pushStrengthRange" type="range" min="0.1" max="3.0" step="0.1" value="1.5">
+
+      <button id="twoPlayerToggle">Enable Two Player Mode</button>
+      <button id="loaderToggle">Disable Loaders</button>
+      <button id="startTimer">Start Match</button>
+      <button id="practiceToggle">Start Practice Mode</button>
+      <button id="calibrate">Calibrate</button>
+      <button id="reset">Reset</button>
+
+      <div class="stat" id="info">No gamepad detected</div>
+      <div class="hint">Keyboard fallback: Player 1 = W/S + ↑/↓ ; Player 2 = I/K + J/L</div>
+      <div class="hint">Intake: Player 1 = Left Shift, Player 2 = Right Shift</div>
+      <div class="hint">Pass-Through (B2): Player 1 = E, Player 2 = U</div>
+      <div class="hint">Scoring Switch (B1): Player 1 = Q, Player 2 = O</div>
+      <div class="hint">Scoring Switch: Blocks scoring when ON, allows scoring when OFF</div>
+      <div class="hint">Gamepads: First controller = Player 1, Second controller = Player 2</div>
+      <div class="hint">Intake Button: B4 (Left Bumper) | Pass-Through Button: B2</div>
+    </div>
+  </div>
+
+<script>
+// --- UI refs ---
+const canvas = document.getElementById('world');
+const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
+const heldEl1 = document.getElementById('held1');
+const heldEl2 = document.getElementById('held2');
+const blueHeldEl1 = document.getElementById('blueHeld1');
+const redHeldEl1 = document.getElementById('redHeld1');
+const blueHeldEl2 = document.getElementById('blueHeld2');
+const redHeldEl2 = document.getElementById('redHeld2');
+const scoreEl1 = document.getElementById('score1');
+const scoreEl2 = document.getElementById('score2');
+const intakeEl1 = document.getElementById('intake1');
+const intakeEl2 = document.getElementById('intake2');
+const passThroughEl1 = document.getElementById('passThrough1');
+const passThroughEl2 = document.getElementById('passThrough2');
+const scoringSwitchEl1 = document.getElementById('scoringSwitch1');
+const scoringSwitchEl2 = document.getElementById('scoringSwitch2');
+const driveModeBtn1 = document.getElementById('driveModeBtn1');
+const driveModeBtn2 = document.getElementById('driveModeBtn2');
+const timerOverlay = document.getElementById('timerOverlay');
+const twoPlayerToggle = document.getElementById('twoPlayerToggle');
+const loaderToggle = document.getElementById('loaderToggle');
+const practiceToggle = document.getElementById('practiceToggle');
+const redFlash = document.getElementById('redFlash');
+const teamIndicator = document.getElementById('teamIndicator');
+const modeIndicator = document.getElementById('modeIndicator');
+const countdownEl = document.getElementById('countdown');
+const maxCapacityEl1 = document.getElementById('maxCapacity1');
+const maxCapacityEl2 = document.getElementById('maxCapacity2');
+
+// Individual robot settings
+const speedRange1 = document.getElementById('speedRange1');
+const speedVal1 = document.getElementById('speedVal1');
+const accelRange1 = document.getElementById('accelRange1');
+const accelVal1 = document.getElementById('accelVal1');
+const angAccelRange1 = document.getElementById('angAccelRange1');
+const angAccelVal1 = document.getElementById('angAccelVal1');
+const capacityRange1 = document.getElementById('capacityRange1');
+const capacityVal1 = document.getElementById('capacityVal1');
+
+const speedRange2 = document.getElementById('speedRange2');
+const speedVal2 = document.getElementById('speedVal2');
+const accelRange2 = document.getElementById('accelRange2');
+const accelVal2 = document.getElementById('accelVal2');
+const angAccelRange2 = document.getElementById('angAccelRange2');
+const angAccelVal2 = document.getElementById('angAccelVal2');
+const capacityRange2 = document.getElementById('capacityRange2');
+const capacityVal2 = document.getElementById('capacityVal2');
+
+// Push strength setting
+const pushStrengthRange = document.getElementById('pushStrengthRange');
+const pushStrengthVal = document.getElementById('pushStrengthVal');
+
+// Field margins - will be calculated based on tile size
+let FIELD_MARGIN_V = 40, FIELD_MARGIN_H = 40;
+
+// NEW: Larger tile-based field configuration
+const TILE_SIZE = 100; // Increased tile size for larger field
+const FIELD_WIDTH_TILES = 6;
+const FIELD_HEIGHT_TILES = 6;
+
+function fit(){ 
+  const reserved = 420, minW = 800, minH = 600; // Increased minimum dimensions
+  canvas.width = Math.max(minW, window.innerWidth - reserved); 
+  canvas.height = Math.max(minH, window.innerHeight - 24); 
+  canvas.style.width = canvas.width + 'px'; 
+  canvas.style.height = canvas.height + 'px'; 
+  
+  // Calculate field margins to center the 6x6 tile field
+  const fieldWidth = TILE_SIZE * FIELD_WIDTH_TILES;
+  const fieldHeight = TILE_SIZE * FIELD_HEIGHT_TILES;
+  FIELD_MARGIN_H = (canvas.width - fieldWidth) / 2;
+  FIELD_MARGIN_V = (canvas.height - fieldHeight) / 2;
+  
+  rebuildFieldObjects(); 
+}
+window.addEventListener('resize', fit);
+
+// --- constants ---
+// BALL_R will be calculated based on tile size
+let BALL_R = 0;
+let BALL_DIAM = 0;
+
+// Two-player mode flag
+let twoPlayerMode = false;
+
+// Loader enabled flag
+let loadersEnabled = true;
+
+// Match active flag
+let matchActive = false;
+
+// Practice mode flag
+let practiceMode = false;
+
+// Countdown state
+let countdownActive = false;
+let countdownValue = 3;
+let countdownTimer = 0;
+
+// Flash effect
+let flashRed = false;
+let flashTimer = 0;
+const FLASH_DURATION = 0.5; // seconds
+
+// Push strength
+let pushStrength = Number(pushStrengthRange.value);
+
+// Individual drive modes
+let currentDriveMode1 = 'tank';
+let currentDriveMode2 = 'tank';
+
+// --- Robots ---
+const robot1 = { 
+  x:0, y:0, angle:0, 
+  length: 0, // Will be set in rebuildFieldObjects
+  width: 0,  // Will be set in rebuildFieldObjects
+  maxSpeed:Number(speedRange1.value), leftPower:0, rightPower:0, 
+  vx:0, vy:0, angularVel:0, held:0, blueHeld:0, redHeld:0, score:0, 
+  scoring:{active:false,blueRemaining:0,redRemaining:0,timer:0,perBall:0.3,goal:null},
+  color: '#4af', id: 1, team: 'blue',
+  linearAccel: Number(accelRange1.value),
+  angAccel: Number(angAccelRange1.value),
+  intakeActive: false,
+  maxCapacity: 5,
+  // Set passThroughLongGoals to true initially
+  passThroughLongGoals: true,
+  lastB2State: false,
+  // NEW: Scoring switch state - initially blocked when passThroughLongGoals is true
+  scoringBlocked: true,
+  lastB1State: false,
+  lastKeyScoringSwitch: false,
+  lastKeyPassThrough: false
+};
+
+const robot2 = { 
+  x:0, y:0, angle:Math.PI, 
+  length: 0, // Will be set in rebuildFieldObjects
+  width: 0,  // Will be set in rebuildFieldObjects
+  maxSpeed:Number(speedRange2.value), leftPower:0, rightPower:0, 
+  vx:0, vy:0, angularVel:0, held:0, blueHeld:0, redHeld:0, score:0, 
+  scoring:{active:false,blueRemaining:0,redRemaining:0,timer:0,perBall:0.3,goal:null},
+  color: '#f55', id: 2, team: 'red',
+  linearAccel: Number(accelRange2.value),
+  angAccel: Number(angAccelRange2.value),
+  intakeActive: false,
+  maxCapacity: 5,
+  // Set passThroughLongGoals to true initially
+  passThroughLongGoals: true,
+  lastB2State: false,
+  // NEW: Scoring switch state - initially blocked when passThroughLongGoals is true
+  scoringBlocked: true,
+  lastB1State: false,
+  lastKeyScoringSwitch: false,
+  lastKeyPassThrough: false
+};
+
+// Field objects
+let longGoals = [], middleGoals = [], parkingAreas = [], matchLoads = [], balls = [];
+// Field boundaries for rigid collision
+let fieldBoundaries = [];
+
+// Store original long goal colors for fading effect
+let longGoalOriginalColor = '#264';
+let longGoalFadedColor = 'rgba(38, 68, 102, 0.3)'; // Same color but with 30% opacity
+
+function rebuildFieldObjects(){
+  const fieldWidth = TILE_SIZE * FIELD_WIDTH_TILES;
+  const fieldHeight = TILE_SIZE * FIELD_HEIGHT_TILES;
+  
+  // Update ball size based on tile size (1/8 of a tile)
+  BALL_R = TILE_SIZE / 12;
+  BALL_DIAM = BALL_R * 2;
+  
+  // Update robot dimensions based on tile size
+  robot1.length = TILE_SIZE * (2/3);
+  robot1.width = TILE_SIZE * (1/2);
+  robot1.hx = robot1.length/2;
+  robot1.hy = robot1.width/2;
+  
+  robot2.length = TILE_SIZE * (2/3);
+  robot2.width = TILE_SIZE * (1/2);
+  robot2.hx = robot2.length/2;
+  robot2.hy = robot2.width/2;
+  
+  // Clear previous objects
+  longGoals = [];
+  middleGoals = [];
+  parkingAreas = [];
+  matchLoads = [];
+  fieldBoundaries = [];
+  
+  // Create field boundaries for rigid collision
+  const boundaryThickness = 20;
+  fieldBoundaries.push(
+    // Top boundary
+    { x: FIELD_MARGIN_H - boundaryThickness, y: FIELD_MARGIN_V - boundaryThickness, 
+      w: fieldWidth + boundaryThickness * 2, h: boundaryThickness, type: 'boundary' },
+    // Bottom boundary
+    { x: FIELD_MARGIN_H - boundaryThickness, y: FIELD_MARGIN_V + fieldHeight, 
+      w: fieldWidth + boundaryThickness * 2, h: boundaryThickness, type: 'boundary' },
+    // Left boundary
+    { x: FIELD_MARGIN_H - boundaryThickness, y: FIELD_MARGIN_V, 
+      w: boundaryThickness, h: fieldHeight, type: 'boundary' },
+    // Right boundary
+    { x: FIELD_MARGIN_H + fieldWidth, y: FIELD_MARGIN_V, 
+      w: boundaryThickness, h: fieldHeight, type: 'boundary' }
+  );
+
+  // Long goals - each 2 tiles long, width of a ball (1/8 tile)
+  const goalLength = TILE_SIZE * 2;
+  const goalWidth = BALL_R; // Width of a ball
+  
+  // Position long goals centered on the field
+  const goalX = FIELD_MARGIN_H + (fieldWidth - goalLength) / 2;
+  
+  // Top goal
+  longGoals.push({ 
+    x: goalX, 
+    y: FIELD_MARGIN_V + TILE_SIZE, // Half tile from top
+    w: goalLength, 
+    h: goalWidth, 
+    type:'long',
+    originalColor: longGoalOriginalColor,
+    fadedColor: longGoalFadedColor
+  });
+  
+  // Bottom goal
+  longGoals.push({ 
+    x: goalX, 
+    y: FIELD_MARGIN_V + fieldHeight - TILE_SIZE - goalWidth, // Half tile from bottom
+    w: goalLength, 
+    h: goalWidth, 
+    type:'long',
+    originalColor: longGoalOriginalColor,
+    fadedColor: longGoalFadedColor
+  });
+
+  // Middle goal - enlarged by 30%
+  const middleGoalSize = TILE_SIZE * 1.04; // 0.8 * 1.3 = 1.04 tiles
+  const cx = FIELD_MARGIN_H + fieldWidth / 2;
+  const cy = FIELD_MARGIN_V + fieldHeight / 2;
+  
+  middleGoals.push({ 
+    cx, cy, 
+    len: middleGoalSize, 
+    thickness: middleGoalSize * 0.3,
+    angle: Math.PI/4, 
+    type:'middle' 
+  });
+  middleGoals.push({ 
+    cx, cy, 
+    len: middleGoalSize, 
+    thickness: middleGoalSize * 0.3, 
+    angle: -Math.PI/4, 
+    type:'middle' 
+  });
+
+  // Parking areas - each a little less than a tile, pushed to touch boundary
+  const parkSize = TILE_SIZE * 0.8;
+  
+  // Blue parking (left side) - touching left boundary
+  parkingAreas.push({ 
+    x: FIELD_MARGIN_H, // Touching left boundary
+    y: FIELD_MARGIN_V + (fieldHeight - parkSize) / 2, 
+    w: parkSize, 
+    h: parkSize, 
+    type:'parking', 
+    team: 'blue' 
+  });
+  
+  // Red parking (right side) - touching right boundary
+  parkingAreas.push({ 
+    x: FIELD_MARGIN_H + fieldWidth - parkSize, // Touching right boundary
+    y: FIELD_MARGIN_V + (fieldHeight - parkSize) / 2, 
+    w: parkSize, 
+    h: parkSize, 
+    type:'parking', 
+    team: 'red' 
+  });
+
+  // Loaders - length 1/6 of a tile, positioned at same y-axis as long goals
+  const loadW = TILE_SIZE * (1/6);
+  const loadH = TILE_SIZE * 0.6;
+  
+  // Get the y positions of the long goals for alignment
+  const topGoalY = longGoals[0].y + longGoals[0].h / 2;
+  const bottomGoalY = longGoals[1].y + longGoals[1].h / 2;
+  
+  // Blue loaders (left side) - touching left boundary, aligned with goals
+  matchLoads.push({ 
+    x: FIELD_MARGIN_H, // Touching left boundary
+    y: topGoalY - loadH / 2, // Aligned with top goal
+    w: loadW, h: loadH, 
+    side:'left', team: 'blue', 
+    hasBall:false, reloadTimer:0, supplyInterval:0.4, type:'load' 
+  });
+  matchLoads.push({ 
+    x: FIELD_MARGIN_H, // Touching left boundary
+    y: bottomGoalY - loadH / 2, // Aligned with bottom goal
+    w: loadW, h: loadH, 
+    side:'left', team: 'blue', 
+    hasBall:false, reloadTimer:0, supplyInterval:0.4, type:'load' 
+  });
+  
+  // Red loaders (right side) - touching right boundary, aligned with goals
+  matchLoads.push({ 
+    x: FIELD_MARGIN_H + fieldWidth - loadW, // Touching right boundary
+    y: topGoalY - loadH / 2, // Aligned with top goal
+    w: loadW, h: loadH, 
+    side:'right', team: 'red', 
+    hasBall:false, reloadTimer:0, supplyInterval:0.4, type:'load' 
+  });
+  matchLoads.push({ 
+    x: FIELD_MARGIN_H + fieldWidth - loadW, // Touching right boundary
+    y: bottomGoalY - loadH / 2, // Aligned with bottom goal
+    w: loadW, h: loadH, 
+    side:'right', team: 'red', 
+    hasBall:false, reloadTimer:0, supplyInterval:0.4, type:'load' 
+  });
+
+  // Robot starting positions
+  robot1.x = FIELD_MARGIN_H + TILE_SIZE * 1.5; 
+  robot1.y = FIELD_MARGIN_V + fieldHeight / 2; 
+  robot1.angle = 0; 
+  robot1.vx = robot1.vy = robot1.angularVel = 0;
+  
+  robot2.x = FIELD_MARGIN_H + fieldWidth - TILE_SIZE * 1.5; 
+  robot2.y = FIELD_MARGIN_V + fieldHeight / 2; 
+  robot2.angle = Math.PI; 
+  robot2.vx = robot2.vy = robot2.angularVel = 0;
+
+  // Initialize balls
+  balls = [];
+  for(let i=0;i<5;i++) spawnBall('blue');
+  for(let i=0;i<5;i++) spawnBall('red');
+
+  // Ensure each loader has one ball in its opening
+  if (loadersEnabled) {
+    for(let i=0;i<matchLoads.length;i++){ createLoaderBall(i); }
+  }
+}
+
+// --- collision math helpers (OBB SAT) ---
+function aabbToObb(aabb){ return { cx: aabb.x + aabb.w/2, cy: aabb.y + aabb.h/2, hx: aabb.w/2, hy: aabb.h/2, angle:0 }; }
+function projectObbOnAxis(obb, ax, ay){ const centerProj = obb.cx*ax + obb.cy*ay; const a = {x: Math.cos(obb.angle), y: Math.sin(obb.angle)}; const b = {x: -Math.sin(obb.angle), y: Math.cos(obb.angle)}; const r = obb.hx * Math.abs(a.x*ax + a.y*ay) + obb.hy * Math.abs(b.x*ax + b.y*ay); return { min: centerProj - r, max: centerProj + r, center: centerProj, radius: r }; }
+
+function obbObbPenetration(A, B){ 
+  const axes = [];
+  const aAx = {x: Math.cos(A.angle), y: Math.sin(A.angle)};
+  const aAy = {x: -Math.sin(A.angle), y: Math.cos(A.angle)};
+  const bAx = {x: Math.cos(B.angle), y: Math.sin(B.angle)};
+  const bAy = {x: -Math.sin(B.angle), y: Math.cos(B.angle)};
+  axes.push(aAx,aAy,bAx,bAy);
+  let minOverlap = Infinity;
+  let smallestAxis = null;
+  let axisSign = 1;
+  for(const ax of axes){ 
+    const projA = projectObbOnAxis(A, ax.x, ax.y);
+    const projB = projectObbOnAxis(B, ax.x, ax.y);
+    const overlap = Math.min(projA.max, projB.max) - Math.max(projA.min, projB.min);
+    if(overlap <= 0) return null;
+    if(overlap < minOverlap){
+      minOverlap = overlap;
+      smallestAxis = {x: ax.x, y: ax.y};
+      const dirX = A.cx - B.cx, dirY = A.cy - B.cy;
+      const dot = dirX*ax.x + dirY*ax.y;
+      axisSign = (dot < 0) ? -1 : 1;
+    }
+  } 
+  return { px: smallestAxis.x * minOverlap * axisSign, py: smallestAxis.y * minOverlap * axisSign, penetration: minOverlap }
+}
+
+function obbIntersects(obbA, obbB){ return obbObbPenetration(obbA, obbB) !== null; }
+
+// convert a circle to tiny OBB for spawn checks (approximate)
+function circleAsObb(x,y,r){ return { cx:x, cy:y, hx:r, hy:r, angle:0 }; }
+
+// --- loader ball helpers ---
+function getLoaderOpening(load){ const openingW = 6; const openingH = Math.max(6, Math.floor(load.h/2)); const openingY = load.y + Math.floor(load.h/4); let openingX = load.x + load.w - openingW; if(load.x > canvas.width/2) openingX = load.x; return { x: openingX, y: openingY, w: openingW, h: openingH, cx: openingX + openingW/2, cy: openingY + openingH/2 } }
+
+function createLoaderBall(loaderIndex){ const L = matchLoads[loaderIndex]; if(!L) return; if(L.hasBall) return; const op = getLoaderOpening(L); const jitter = 1.5; const bx = op.cx + (Math.random()-0.5)*jitter; const by = op.cy + (Math.random()-0.5)*jitter; const b = { x: bx, y: by, r: BALL_R, vx: 0, vy: 0, fromLoader: loaderIndex, color: L.team, isStatic: true };
+  balls.push(b); L.hasBall = true; L.reloadTimer = 0; }
+
+// --- spawn balls that avoid overlapping goals/parking/loads (random field balls) ---
+function spawnBall(color){ 
+  const r = BALL_R; 
+  let attempts = 0; 
+  while(attempts < 120){ 
+    attempts++; 
+    const px = Math.random()*(canvas.width - 2*FIELD_MARGIN_H) + FIELD_MARGIN_H; 
+    const py = Math.random()*(canvas.height - 2*FIELD_MARGIN_V) + FIELD_MARGIN_V; 
+    const cObb = circleAsObb(px,py,r+2);
+    
+    // check long goals
+    let bad = false;
+    for(const g of longGoals){ if(obbIntersects(cObb, aabbToObb(g))){ bad=true; break; } }
+    if(bad) continue;
+    
+    // middle goals (as obb)
+    for(const mg of middleGoals){ const mgObb = { cx: mg.cx, cy: mg.cy, hx: mg.len/2, hy: mg.thickness/2, angle: mg.angle }; if(obbIntersects(cObb, mgObb)){ bad=true; break; } }
+    if(bad) continue;
+    
+    // parking
+    for(const p of parkingAreas){ if(obbIntersects(cObb, aabbToObb(p))){ bad=true; break; } }
+    if(bad) continue;
+    
+    // match loads (avoid placing random balls in load area)
+    for(const L of matchLoads){ if(obbIntersects(cObb, aabbToObb(L))){ bad=true; break; } }
+    if(bad) continue;
+    
+    // safe -> push
+    balls.push({ x: px, y: py, r, vx: 0, vy: 0, color, isStatic: false }); 
+    return; 
+  } 
+  
+  // fallback
+  balls.push({ 
+    x: canvas.width/2 + (Math.random()-0.5)*60, 
+    y: canvas.height/2 + (Math.random()-0.5)*60, 
+    r: BALL_R, vx: 0, vy: 0, color, isStatic: false 
+  }); 
+}
+
+// --- Intake box helpers ---
+function getIntakeBox(robot) {
+  // Intake box is a thin rectangle at the front of the robot
+  // Width is 80% of robot width, depth is 10 pixels
+  const intakeWidth = robot.width * 0.8;
+  const intakeDepth = 10;
+  
+  // Position the intake box at the front of the robot
+  const frontX = robot.x + Math.cos(robot.angle) * (robot.length/2);
+  const frontY = robot.y + Math.sin(robot.angle) * (robot.length/2);
+  
+  // Create OBB for intake box
+  return {
+    cx: frontX + Math.cos(robot.angle) * (intakeDepth/2),
+    cy: frontY + Math.sin(robot.angle) * (intakeDepth/2),
+    hx: intakeDepth/2,
+    hy: intakeWidth/2,
+    angle: robot.angle
+  };
+}
+
+// --- Ball physics functions ---
+function circleObbPenetration(circle, obb) {
+  // Convert circle to OBB for collision detection
+  const circleObb = { cx: circle.x, cy: circle.y, hx: circle.r, hy: circle.r, angle: 0 };
+  return obbObbPenetration(circleObb, obb);
+}
+
+function handleBallRobotCollision(ball, robot) {
+  // Skip if ball is from a loader (static)
+  if (ball.isStatic) return false;
+  
+  const robotObb = { cx: robot.x, cy: robot.y, hx: robot.hx, hy: robot.hy, angle: robot.angle };
+  const pen = circleObbPenetration(ball, robotObb);
+  
+  if (!pen) return false;
+  
+  // Use the penetration vector for more accurate collision response
+  const normal = { x: pen.px, y: pen.py };
+  const normalLength = Math.hypot(normal.x, normal.y);
+  
+  if (normalLength === 0) return false;
+  
+  // Normalize the normal vector
+  normal.x /= normalLength;
+  normal.y /= normalLength;
+  
+  // Separate ball from robot using the penetration depth
+  const separation = pen.penetration + 2;
+  ball.x += normal.x * separation;
+  ball.y += normal.y * separation;
+  
+  // Calculate robot's velocity at the point of collision
+  const robotVel = {
+    x: robot.vx,
+    y: robot.vy
+  };
+  
+  // Calculate relative velocity
+  const relativeVel = {
+    x: robotVel.x - ball.vx,
+    y: robotVel.y - ball.vy
+  };
+  
+  // Calculate velocity along the normal
+  const velAlongNormal = relativeVel.x * normal.x + relativeVel.y * normal.y;
+  
+  // Do not resolve if velocities are separating
+  if (velAlongNormal <= 0) return true;
+  
+  // Calculate restitution (bounciness)
+  const restitution = 0.8;
+  
+  // Calculate impulse scalar
+  const massRatio = 1.2;
+  const impulseScalar = -(1 + restitution) * velAlongNormal * massRatio;
+  
+  // Apply impulse to the ball
+  ball.vx -= impulseScalar * normal.x;
+  ball.vy -= impulseScalar * normal.y;
+  
+  // Add some randomness to make it more realistic
+  const randomFactor = 0.05;
+  ball.vx += (Math.random() - 0.5) * randomFactor * Math.abs(robotVel.x);
+  ball.vy += (Math.random() - 0.5) * randomFactor * Math.abs(robotVel.y);
+  
+  // Ensure minimum velocity to prevent sticking
+  const minVelocity = 30;
+  const ballSpeed = Math.hypot(ball.vx, ball.vy);
+  if (ballSpeed < minVelocity) {
+    ball.vx = normal.x * minVelocity;
+    ball.vy = normal.y * minVelocity;
+  }
+  
+  return true;
+}
+
+function handleBallBallCollision(ballA, ballB) {
+  // Skip if either ball is static
+  if (ballA.isStatic || ballB.isStatic) return false;
+  
+  const dx = ballB.x - ballA.x;
+  const dy = ballB.y - ballA.y;
+  const distance = Math.hypot(dx, dy);
+  
+  // Check if balls are colliding
+  if (distance >= ballA.r + ballB.r) return false;
+  
+  // Calculate collision normal
+  const normal = distance > 0 ? { x: dx/distance, y: dy/distance } : { x: 1, y: 0 };
+  
+  // Separate balls to prevent overlapping
+  const overlap = (ballA.r + ballB.r - distance) / 2;
+  ballA.x -= overlap * normal.x;
+  ballA.y -= overlap * normal.y;
+  ballB.x += overlap * normal.x;
+  ballB.y += overlap * normal.y;
+  
+  // Calculate relative velocity
+  const relativeVel = {
+    x: ballB.vx - ballA.vx,
+    y: ballB.vy - ballA.vy
+  };
+  
+  // Calculate velocity along the normal
+  const velAlongNormal = relativeVel.x * normal.x + relativeVel.y * normal.y;
+  
+  // Do not resolve if velocities are separating
+  if (velAlongNormal > 0) return true;
+  
+  // Calculate restitution (bounciness)
+  const restitution = 0.8;
+  
+  // Calculate impulse scalar
+  const impulseScalar = -(1 + restitution) * velAlongNormal / 2;
+  
+  // Apply impulse to both balls
+  ballA.vx -= impulseScalar * normal.x;
+  ballA.vy -= impulseScalar * normal.y;
+  ballB.vx += impulseScalar * normal.x;
+  ballB.vy += impulseScalar * normal.y;
+  
+  return true;
+}
+
+// Handle ball collisions with field objects
+function handleBallFieldCollision(ball) {
+  // Skip if ball is static
+  if (ball.isStatic) return false;
+  
+  let collision = false;
+  
+  // Check collision with long goals
+  for(const g of longGoals) {
+    const gObb = aabbToObb(g);
+    const pen = circleObbPenetration(ball, gObb);
+    
+    if (pen) {
+      // Calculate normal from penetration vector
+      const normal = { x: pen.px, y: pen.py };
+      const normalLength = Math.hypot(normal.x, normal.y);
+      
+      if (normalLength > 0) {
+        normal.x /= normalLength;
+        normal.y /= normalLength;
+        
+        // Separate ball from goal
+        const separation = pen.penetration + 2;
+        ball.x += normal.x * separation;
+        ball.y += normal.y * separation;
+        
+        // Bounce the ball
+        const dot = ball.vx * normal.x + ball.vy * normal.y;
+        ball.vx = (ball.vx - 2 * dot * normal.x) * 0.7;
+        ball.vy = (ball.vy - 2 * dot * normal.y) * 0.7;
+        
+        collision = true;
+      }
+    }
+  }
+  
+  // Check collision with middle goals
+  for(const mg of middleGoals) {
+    const mgObb = { cx: mg.cx, cy: mg.cy, hx: mg.len/2, hy: mg.thickness/2, angle: mg.angle };
+    const pen = circleObbPenetration(ball, mgObb);
+    
+    if (pen) {
+      // Calculate normal from penetration vector
+      const normal = { x: pen.px, y: pen.py };
+      const normalLength = Math.hypot(normal.x, normal.y);
+      
+      if (normalLength > 0) {
+        normal.x /= normalLength;
+        normal.y /= normalLength;
+        
+        // Separate ball from goal
+        const separation = pen.penetration + 2;
+        ball.x += normal.x * separation;
+        ball.y += normal.y * separation;
+        
+        // Bounce the ball
+        const dot = ball.vx * normal.x + ball.vy * normal.y;
+        ball.vx = (ball.vx - 2 * dot * normal.x) * 0.7;
+        ball.vy = (ball.vy - 2 * dot * normal.y) * 0.7;
+        
+        collision = true;
+      }
+    }
+  }
+  
+  // Check collision with parking areas
+  for(const p of parkingAreas) {
+    const pObb = aabbToObb(p);
+    const pen = circleObbPenetration(ball, pObb);
+    
+    if (pen) {
+      // Calculate normal from penetration vector
+      const normal = { x: pen.px, y: pen.py };
+      const normalLength = Math.hypot(normal.x, normal.y);
+      
+      if (normalLength > 0) {
+        normal.x /= normalLength;
+        normal.y /= normalLength;
+        
+        // Separate ball from parking area
+        const separation = pen.penetration + 2;
+        ball.x += normal.x * separation;
+        ball.y += normal.y * separation;
+        
+        // Bounce the ball
+        const dot = ball.vx * normal.x + ball.vy * normal.y;
+        ball.vx = (ball.vx - 2 * dot * normal.x) * 0.7;
+        ball.vy = (ball.vy - 2 * dot * normal.y) * 0.7;
+        
+        collision = true;
+      }
+    }
+  }
+  
+  // Check collision with match loads
+  for(const L of matchLoads) {
+    const LObb = aabbToObb(L);
+    const pen = circleObbPenetration(ball, LObb);
+    
+    if (pen) {
+      // Calculate normal from penetration vector
+      const normal = { x: pen.px, y: pen.py };
+      const normalLength = Math.hypot(normal.x, normal.y);
+      
+      if (normalLength > 0) {
+        normal.x /= normalLength;
+        normal.y /= normalLength;
+        
+        // Separate ball from loader
+        const separation = pen.penetration + 2;
+        ball.x += normal.x * separation;
+        ball.y += normal.y * separation;
+        
+        // Bounce the ball
+        const dot = ball.vx * normal.x + ball.vy * normal.y;
+        ball.vx = (ball.vx - 2 * dot * normal.x) * 0.7;
+        ball.vy = (ball.vy - 2 * dot * normal.y) * 0.7;
+        
+        collision = true;
+      }
+    }
+  }
+  
+  return collision;
+}
+
+function handleBallWallCollision(ball) {
+  // Skip if ball is static
+  if (ball.isStatic) return false;
+  
+  let collision = false;
+  
+  // Check left and right boundaries
+  if (ball.x - ball.r < FIELD_MARGIN_H) {
+    ball.x = FIELD_MARGIN_H + ball.r;
+    ball.vx = Math.abs(ball.vx) * 0.7;
+    collision = true;
+  } else if (ball.x + ball.r > canvas.width - FIELD_MARGIN_H) {
+    ball.x = canvas.width - FIELD_MARGIN_H - ball.r;
+    ball.vx = -Math.abs(ball.vx) * 0.7;
+    collision = true;
+  }
+  
+  // Check top and bottom boundaries
+  if (ball.y - ball.r < FIELD_MARGIN_V) {
+    ball.y = FIELD_MARGIN_V + ball.r;
+    ball.vy = Math.abs(ball.vy) * 0.7;
+    collision = true;
+  } else if (ball.y + ball.r > canvas.height - FIELD_MARGIN_V) {
+    ball.y = canvas.height - FIELD_MARGIN_V - ball.r;
+    ball.vy = -Math.abs(ball.vy) * 0.7;
+    collision = true;
+  }
+  
+  return collision;
+}
+
+function updateBallPhysics(dt) {
+  // Apply friction to all non-static balls
+  const friction = 0.98;
+  
+  for (const ball of balls) {
+    // Skip static balls (loader balls)
+    if (ball.isStatic) continue;
+    
+    // Apply friction
+    ball.vx *= friction;
+    ball.vy *= friction;
+    
+    // Update position
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+    
+    // Handle wall collisions
+    handleBallWallCollision(ball);
+    
+    // Handle field object collisions
+    handleBallFieldCollision(ball);
+  }
+  
+  // Handle ball-robot collisions
+  for (const ball of balls) {
+    // Skip static balls
+    if (ball.isStatic) continue;
+    
+    handleBallRobotCollision(ball, robot1);
+    if (twoPlayerMode) {
+      handleBallRobotCollision(ball, robot2);
+    }
+  }
+  
+  // Handle ball-ball collisions (simple pairwise check)
+  for (let i = 0; i < balls.length; i++) {
+    // Skip static balls
+    if (balls[i].isStatic) continue;
+    
+    for (let j = i + 1; j < balls.length; j++) {
+      // Skip static balls
+      if (balls[j].isStatic) continue;
+      
+      handleBallBallCollision(balls[i], balls[j]);
+    }
+  }
+}
+
+// --- input ---
+let kb1 = { forward:0, turn:0, lw:0, rw:0, intake: false, passThrough: false, scoringSwitch: false };
+let kb2 = { forward:0, turn:0, lw:0, rw:0, intake: false, passThrough: false, scoringSwitch: false };
+
+// Individual key handling based on drive modes
+window.addEventListener('keydown', e=>{ 
+  // Player 1 controls based on their drive mode
+  if(currentDriveMode1==='tank'){
+    if(e.code==='KeyW') kb1.lw=1; 
+    if(e.code==='KeyS') kb1.lw=-1; 
+    if(e.code==='ArrowUp') kb1.rw=1; 
+    if(e.code==='ArrowDown') kb1.rw=-1;
+  } else {
+    if(e.code==='KeyW') kb1.forward=1; 
+    if(e.code==='KeyS') kb1.forward=-1; 
+    if(e.code==='KeyA') kb1.turn=-1; 
+    if(e.code==='KeyD') kb1.turn=1;
+  }
+  if(e.code==='ShiftLeft') kb1.intake = true;
+  if(e.code==='KeyE') kb1.passThrough = true;
+  // NEW: Scoring switch key for player 1
+  if(e.code==='KeyQ') kb1.scoringSwitch = true;
+  
+  // Player 2 controls based on their drive mode
+  if(currentDriveMode2==='tank'){
+    if(e.code==='KeyI') kb2.lw=1; 
+    if(e.code==='KeyK') kb2.lw=-1; 
+    if(e.code==='KeyJ') kb2.rw=-1; 
+    if(e.code==='KeyL') kb2.rw=1;
+  } else {
+    if(e.code==='KeyI') kb2.forward=1; 
+    if(e.code==='KeyK') kb2.forward=-1; 
+    if(e.code==='KeyJ') kb2.turn=-1; 
+    if(e.code==='KeyL') kb2.turn=1;
+  }
+  if(e.code==='ShiftRight') kb2.intake = true;
+  if(e.code==='KeyU') kb2.passThrough = true;
+  // NEW: Scoring switch key for player 2
+  if(e.code==='KeyO') kb2.scoringSwitch = true;
+});
+
+window.addEventListener('keyup', e=>{ 
+  // Player 1 controls based on their drive mode
+  if(currentDriveMode1==='tank'){
+    if(['KeyW','KeyS'].includes(e.code)) kb1.lw=0; 
+    if(['ArrowUp','ArrowDown'].includes(e.code)) kb1.rw=0;
+  } else {
+    if(['KeyW','KeyS'].includes(e.code)) kb1.forward=0; 
+    if(['KeyA','KeyD'].includes(e.code)) kb1.turn=0;
+  }
+  if(e.code==='ShiftLeft') kb1.intake = false;
+  if(e.code==='KeyE') kb1.passThrough = false;
+  // NEW: Scoring switch key for player 1
+  if(e.code==='KeyQ') kb1.scoringSwitch = false;
+  
+  // Player 2 controls based on their drive mode
+  if(currentDriveMode2==='tank'){
+    if(['KeyI','KeyK'].includes(e.code)) kb2.lw=0; 
+    if(['KeyJ','KeyL'].includes(e.code)) kb2.rw=0;
+  } else {
+    if(['KeyI','KeyK'].includes(e.code)) kb2.forward=0; 
+    if(['KeyJ','KeyL'].includes(e.code)) kb2.turn=0;
+  }
+  if(e.code==='ShiftRight') kb2.intake = false;
+  if(e.code==='KeyU') kb2.passThrough = false;
+  // NEW: Scoring switch key for player 2
+  if(e.code==='KeyO') kb2.scoringSwitch = false;
+});
+
+// Individual drive mode buttons
+driveModeBtn1.addEventListener('click', ()=>{ 
+  currentDriveMode1 = currentDriveMode1 === 'tank' ? 'arcade' : 'tank'; 
+  driveModeBtn1.textContent = currentDriveMode1[0].toUpperCase()+currentDriveMode1.slice(1); 
+});
+
+driveModeBtn2.addEventListener('click', ()=>{ 
+  currentDriveMode2 = currentDriveMode2 === 'tank' ? 'arcade' : 'tank'; 
+  driveModeBtn2.textContent = currentDriveMode2[0].toUpperCase()+currentDriveMode2.slice(1); 
+});
+
+twoPlayerToggle.addEventListener('click', ()=>{ 
+  twoPlayerMode = !twoPlayerMode;
+  twoPlayerToggle.textContent = twoPlayerMode ? 'Disable Two Player Mode' : 'Enable Two Player Mode';
+  teamIndicator.textContent = twoPlayerMode ? 'Blue Team (P1) vs Red Team (P2)' : 'Blue Team (P1)';
+  teamIndicator.className = twoPlayerMode ? 'team-indicator' : 'team-indicator blue-indicator';
+  rebuildFieldObjects();
+});
+
+loaderToggle.addEventListener('click', ()=>{ 
+  loadersEnabled = !loadersEnabled;
+  loaderToggle.textContent = loadersEnabled ? 'Disable Loaders' : 'Enable Loaders';
+  
+  if (loadersEnabled) {
+    // Create balls for all empty loaders
+    for(let i=0;i<matchLoads.length;i++){ 
+      if(!matchLoads[i].hasBall) createLoaderBall(i);
+    }
+  } else {
+    // Remove all loader balls
+    for(let i=balls.length-1; i>=0; i--){
+      if(balls[i].fromLoader !== undefined) {
+        balls.splice(i,1);
+      }
+    }
+    // Mark all loaders as empty
+    for(let i=0;i<matchLoads.length;i++){ 
+      matchLoads[i].hasBall = false;
+    }
+  }
+});
+
+// Practice mode toggle
+practiceToggle.addEventListener('click', ()=>{ 
+  if (practiceMode) {
+    // Stop practice mode
+    practiceMode = false;
+    practiceToggle.textContent = 'Start Practice Mode';
+    matchActive = false;
+    modeIndicator.textContent = '';
+    modeIndicator.className = 'mode-indicator';
+  } else {
+    // Start practice mode
+    practiceMode = true;
+    practiceToggle.textContent = 'Stop Practice Mode';
+    matchActive = true;
+    timerRunning = false;
+    modeIndicator.textContent = 'PRACTICE MODE';
+    modeIndicator.className = 'mode-indicator practice-indicator';
+    
+    // Reset timer display to full time
+    matchTimeLeft = matchDuration;
+    updateTimerOverlay();
+  }
+});
+
+function readGamepads(){ 
+  const gps = navigator.getGamepads(); 
+  if(!gps) return [null, null]; 
+  return [gps[0] || null, gps[1] || null];
+}
+
+function applyDeadzone(v,d=0.15){ return Math.abs(v)<d ? 0 : (v - Math.sign(v)*d)/(1-d); }
+function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+
+function sampleInputs(){ 
+  const [gp1, gp2] = readGamepads(); 
+  
+  // Player 1 controls
+  if(gp1){ 
+    const aLeftY = gp1.axes[1] ?? 0; 
+    const aRightX = gp1.axes[2] ?? 0; 
+    info.innerHTML = `P1: LY=${aLeftY.toFixed(2)} RX=${aRightX.toFixed(2)} `;
+    
+    // Use individual drive mode for player 1
+    if(currentDriveMode1 === 'tank'){
+      let gl = - (gp1.axes[5] ?? 0), gr = - (gp1.axes[1] ?? 0); 
+      gl = applyDeadzone(gl); gr = applyDeadzone(gr); 
+      robot1.leftPower = (matchActive || practiceMode) && !countdownActive ? clamp(gl,-1,1) : 0; 
+      robot1.rightPower = (matchActive || practiceMode) && !countdownActive ? clamp(gr,-1,1) : 0;
+    } else {
+      let forward = -aLeftY; 
+      let swing = -aRightX; 
+      forward = applyDeadzone(forward); 
+      swing = applyDeadzone(swing);
+      const l = clamp(forward + swing, -1, 1); 
+      const r = clamp(forward - swing, -1, 1); 
+      robot1.leftPower = (matchActive || practiceMode) && !countdownActive ? l : 0; 
+      robot1.rightPower = (matchActive || practiceMode) && !countdownActive ? r : 0;
+    }
+    
+    // Intake button (button 4 - index 4)
+    robot1.intakeActive = (gp1.buttons[4] && gp1.buttons[4].pressed) || kb1.intake;
+    
+    // NEW: Scoring switch (button 0 - index 0)
+    const currentB1State = gp1.buttons[0] && gp1.buttons[0].pressed;
+    if (currentB1State && !robot1.lastB1State) {
+      // Toggle scoring switch when B1 is pressed (rising edge)
+      robot1.scoringBlocked = !robot1.scoringBlocked;
+    }
+    robot1.lastB1State = currentB1State;
+
+    // Pass-Through button (button 1 - index 1, B2)
+    const currentB2State = gp1.buttons[2] && gp1.buttons[2].pressed;
+    if (currentB2State && !robot1.lastB2State) {
+      // Toggle pass-through when B2 is pressed (rising edge)
+      robot1.passThroughLongGoals = !robot1.passThroughLongGoals;
+      
+      // NEW: Auto-update scoring block based on pass-through state
+      robot1.scoringBlocked = robot1.passThroughLongGoals;
+    }
+    robot1.lastB2State = currentB2State;
+
+    // NEW: Check keyboard for scoring switch (toggle behavior)
+    if (kb1.scoringSwitch && !robot1.lastKeyScoringSwitch) {
+      // Toggle when key is pressed (rising edge)
+      robot1.scoringBlocked = !robot1.scoringBlocked;
+    }
+    robot1.lastKeyScoringSwitch = kb1.scoringSwitch;
+
+    // Also check keyboard for pass-through (toggle behavior)
+    if (kb1.passThrough && !robot1.lastKeyPassThrough) {
+      // Toggle when key is pressed (rising edge)
+      robot1.passThroughLongGoals = !robot1.passThroughLongGoals;
+      
+      // NEW: Auto-update scoring block based on pass-through state
+      robot1.scoringBlocked = robot1.passThroughLongGoals;
+    }
+    robot1.lastKeyPassThrough = kb1.passThrough;
+
+    // Only allow scoring if scoring is not blocked
+    if(!robot1.scoringBlocked){
+      if(gp1.buttons[4] && gp1.buttons[4].pressed  && (matchActive || practiceMode) && !countdownActive) startScoringForSet(robot1, longGoals);
+      if(gp1.buttons[4] && gp1.buttons[4].pressed  && (matchActive || practiceMode) && !countdownActive) startScoringForSet(robot1, middleGoals);
+    }
+    } else { 
+    // Use individual drive mode for player 1
+    if(currentDriveMode1 === 'tank'){
+      robot1.leftPower = (matchActive || practiceMode) && !countdownActive ? kb1.lw : 0; 
+      robot1.rightPower = (matchActive || practiceMode) && !countdownActive ? kb1.rw : 0; 
+    } else { 
+      const forward = kb1.forward; 
+      const turn = kb1.turn; 
+      robot1.leftPower = (matchActive || practiceMode) && !countdownActive ? clamp(forward + turn, -1, 1) : 0; 
+      robot1.rightPower = (matchActive || practiceMode) && !countdownActive ? clamp(forward - turn, -1, 1) : 0; 
+    } 
+    robot1.intakeActive = kb1.intake;
+
+    // NEW: Keyboard scoring switch toggle
+    if (kb1.scoringSwitch && !robot1.lastKeyScoringSwitch) {
+      robot1.scoringBlocked = !robot1.scoringBlocked;
+    }
+    robot1.lastKeyScoringSwitch = kb1.scoringSwitch;
+
+    // Keyboard pass-through toggle
+    if (kb1.passThrough && !robot1.lastKeyPassThrough) {
+      robot1.passThroughLongGoals = !robot1.passThroughLongGoals;
+      
+      // NEW: Auto-update scoring block based on pass-through state
+      robot1.scoringBlocked = robot1.passThroughLongGoals;
+    }
+    robot1.lastKeyPassThrough = kb1.passThrough;
+    }
+  
+  // Update intake display
+  intakeEl1.textContent = robot1.intakeActive ? "ON" : "OFF";
+  intakeEl1.style.color = robot1.intakeActive ? "#0f0" : "#f00";
+  
+  // Update pass-through display
+  passThroughEl1.textContent = robot1.passThroughLongGoals ? "ON" : "OFF";
+  passThroughEl1.style.color = robot1.passThroughLongGoals ? "#0f0" : "#f00";
+  
+  // NEW: Update scoring switch display
+  scoringSwitchEl1.textContent = robot1.scoringBlocked ? "BLOCKED" : "ALLOWED";
+  scoringSwitchEl1.style.color = robot1.scoringBlocked ? "#f00" : "#0f0";
+  
+  // Player 2 controls (only if two-player mode is enabled)
+  if(twoPlayerMode){
+    if(gp2){ 
+      const aLeftY = gp2.axes[1] ?? 0; 
+      const aRightX = gp2.axes[2] ?? 0; 
+      info.innerHTML += `P2: LY=${aLeftY.toFixed(2)} RX=${aRightX.toFixed(2)}`;
+      
+      // Use individual drive mode for player 2
+      if(currentDriveMode2 === 'tank'){
+        let gl = - (gp2.axes[5] ?? 0), gr = - (gp2.axes[1] ?? 0); 
+        gl = applyDeadzone(gl); gr = applyDeadzone(gr); 
+        robot2.leftPower = (matchActive || practiceMode) && !countdownActive ? clamp(gl,-1,1) : 0; 
+        robot2.rightPower = (matchActive || practiceMode) && !countdownActive ? clamp(gr,-1,1) : 0;
+      } else {
+        let forward = -aLeftY; 
+        let swing = -aRightX; 
+        forward = applyDeadzone(forward); 
+        swing = applyDeadzone(swing);
+        const l = clamp(forward + swing, -1, 1); 
+        const r = clamp(forward - swing, -1, 1); 
+        robot2.leftPower = (matchActive || practiceMode) && !countdownActive ? l : 0; 
+        robot2.rightPower = (matchActive || practiceMode) && !countdownActive ? r : 0;
+      }
+      
+      // Intake button (button 4 - index 4)
+      robot2.intakeActive = (gp2.buttons[4] && gp2.buttons[4].pressed) || kb2.intake;
+      
+      // NEW: Scoring switch (button 0 - index 0)
+      const currentB1State = gp2.buttons[0] && gp2.buttons[0].pressed;
+      if (currentB1State && !robot2.lastB1State) {
+        robot2.scoringBlocked = !robot2.scoringBlocked;
+      }
+      robot2.lastB1State = currentB1State;
+      
+      // Pass-Through button (button 1 - index 1, B2)
+      const currentB2State = gp2.buttons[1] && gp2.buttons[1].pressed;
+      if (currentB2State && !robot2.lastB2State) {
+        robot2.passThroughLongGoals = !robot2.passThroughLongGoals;
+      }
+      robot2.lastB2State = currentB2State;
+      
+      // NEW: Check keyboard for scoring switch
+      if (kb2.scoringSwitch && !robot2.lastKeyScoringSwitch) {
+        robot2.scoringBlocked = !robot2.scoringBlocked;
+      }
+      robot2.lastKeyScoringSwitch = kb2.scoringSwitch;
+      
+      // Also check keyboard for pass-through
+      if (kb2.passThrough && !robot2.lastKeyPassThrough) {
+        robot2.passThroughLongGoals = !robot2.passThroughLongGoals;
+      }
+      robot2.lastKeyPassThrough = kb2.passThrough;
+      
+      // Only allow scoring if scoring is not blocked
+      if(!robot2.scoringBlocked){
+        if(gp2.buttons[4] && gp2.buttons[4].pressed && (matchActive || practiceMode) && !countdownActive) startScoringForSet(robot2, longGoals);
+        if(gp2.buttons[3] && gp2.buttons[3].pressed && (matchActive || practiceMode) && !countdownActive) startScoringForSet(robot2, middleGoals);
+      }
+    } else { 
+      // Use individual drive mode for player 2
+      if(currentDriveMode2 === 'tank'){
+        robot2.leftPower = (matchActive || practiceMode) && !countdownActive ? kb2.lw : 0; 
+        robot2.rightPower = (matchActive || practiceMode) && !countdownActive ? kb2.rw : 0; 
+      } else { 
+        const forward = kb2.forward; 
+        const turn = kb2.turn; 
+        robot2.leftPower = (matchActive || practiceMode) && !countdownActive ? clamp(forward + turn, -1, 1) : 0; 
+        robot2.rightPower = (matchActive || practiceMode) && !countdownActive ? clamp(forward - turn, -1, 1) : 0; 
+      } 
+      robot2.intakeActive = kb2.intake;
+      
+      // NEW: Keyboard scoring switch toggle
+      if (kb2.scoringSwitch && !robot2.lastKeyScoringSwitch) {
+        robot2.scoringBlocked = !robot2.scoringBlocked;
+      }
+      robot2.lastKeyScoringSwitch = kb2.scoringSwitch;
+      
+      // Keyboard pass-through toggle
+      if (kb2.passThrough && !robot2.lastKeyPassThrough) {
+        robot2.passThroughLongGoals = !robot2.passThroughLongGoals;
+      }
+      robot2.lastKeyPassThrough = kb2.passThrough;
+    }
+    
+    // Update intake display
+    intakeEl2.textContent = robot2.intakeActive ? "ON" : "OFF";
+    intakeEl2.style.color = robot2.intakeActive ? "#0f0" : "#f00";
+    
+    // Update pass-through display
+    passThroughEl2.textContent = robot2.passThroughLongGoals ? "ON" : "OFF";
+    passThroughEl2.style.color = robot2.passThroughLongGoals ? "#0f0" : "#f00";
+    
+    // NEW: Update scoring switch display
+    scoringSwitchEl2.textContent = robot2.scoringBlocked ? "BLOCKED" : "ALLOWED";
+    scoringSwitchEl2.style.color = robot2.scoringBlocked ? "#f00" : "#0f0";
+  } else {
+    // If not in two-player mode, disable robot2
+    robot2.leftPower = 0;
+    robot2.rightPower = 0;
+    robot2.intakeActive = false;
+    robot2.passThroughLongGoals = false;
+    robot2.scoringBlocked = true;
+    intakeEl2.textContent = "OFF";
+    intakeEl2.style.color = "#f00";
+    passThroughEl2.textContent = "OFF";
+    passThroughEl2.style.color = "#f00";
+    scoringSwitchEl2.textContent = "BLOCKED";
+    scoringSwitchEl2.style.color = "#f00";
+  }
+}
+
+// --- scoring endpoints ---
+function getGoalEndpoints(a){ 
+  if(a.type === 'long'){ 
+    const w = Math.max(12, Math.min(36, a.w*0.12)); 
+    const h = Math.max(12, Math.min(36, a.h*0.12)); 
+    if(a.w > a.h){ 
+      const left = { x: a.x - w/2, y: a.y + a.h/2 - h/2, w: w, h: h, type:'aabb-end' }; 
+      const right = { x: a.x + a.w - w/2, y: a.y + a.h/2 - h/2, w: w, h: h, type:'aabb-end' }; 
+      return [left,right]; 
+    } else { 
+      const top = { x: a.x + a.w/2 - w/2, y: a.y - h/2, w: w, h: h, type:'aabb-end' }; 
+      const bottom = { x: a.x + a.w/2 - w/2, y: a.y + a.h - h/2, w: w, h: h, type:'aabb-end' }; 
+      return [top,bottom]; 
+    } 
+  }
+  if(a.type === 'middle'){ 
+    const w = Math.max(12, Math.min(36, a.len*0.12)); 
+    const h = Math.max(12, Math.min(36, a.thickness*0.12)); 
+    const ex = Math.cos(a.angle) * (a.len/2); 
+    const ey = Math.sin(a.angle) * (a.len/2); 
+    const e1x = a.cx + ex, e1y = a.cy + ey; 
+    const e2x = a.cx - ex, e2y = a.cy - ey; 
+    return [ 
+      { cx: e1x, cy: e1y, hx: w/2, hy: h/2, angle: a.angle, type:'obb-end' }, 
+      { cx: e2x, cy: e2y, hx: w/2, hy: h/2, angle: a.angle, type:'obb-end' } 
+    ]; 
+  }
+  return [];
+}
+
+function startScoringForSet(robot, goalSet){ 
+  // NEW: Check if scoring is blocked
+  if (robot.scoringBlocked) {
+    return; // Don't start scoring if blocked
+  }
+  
+  if (robot.passThroughLongGoals && goalSet === longGoals) {
+    return; 
+  }
+  if (!robot.passThroughLongGoals && goalSet === middleGoals) {
+    return; 
+  }
+  if(robot.scoring.active) return; 
+  for(const g of goalSet){ 
+    const endpoints = getGoalEndpoints(g); 
+    for(const e of endpoints){ 
+      const pen = (e.type==='obb-end') ? 
+        obbObbPenetration({cx:robot.x,cy:robot.y,hx:robot.hx,hy:robot.hy,angle:robot.angle}, e) : 
+        obbObbPenetration({cx:robot.x,cy:robot.y,hx:robot.hx,hy:robot.hy,angle:robot.angle}, aabbToObb(e)); 
+      if(pen){ 
+        if(robot.held > 0){ 
+          robot.scoring.active = true; 
+          robot.scoring.goal = g; 
+          robot.scoring.blueRemaining = robot.blueHeld; 
+          robot.scoring.redRemaining = robot.redHeld; 
+          robot.scoring.timer = 0; 
+          robot.blueHeld = 0;
+          robot.redHeld = 0;
+          robot.held = 0; 
+          if(robot.id === 1) {
+            heldEl1.textContent = robot.held;
+            blueHeldEl1.textContent = robot.blueHeld;
+            redHeldEl1.textContent = robot.redHeld;
+          } else {
+            heldEl2.textContent = robot.held;
+            blueHeldEl2.textContent = robot.blueHeld;
+            redHeldEl2.textContent = robot.redHeld;
+          }
+        } 
+        return; 
+      } 
+    } 
+  } 
+}
+
+// --- Collision-based intake logic ---
+function handleBalls(robot, heldEl, blueHeldEl, redHeldEl){ 
+  // Only intake if intake is active
+  if (!robot.intakeActive) return;
+  
+  // Get the intake box for this robot
+  const intakeBox = getIntakeBox(robot);
+  
+  // Check collision with balls
+  for(let i = balls.length - 1; i >= 0; i--){ 
+    const b = balls[i]; 
+    
+    // Convert ball to a small OBB for collision detection
+    const ballObb = circleAsObb(b.x, b.y, b.r);
+    
+    // Check collision between intake box and ball
+    if(obbIntersects(intakeBox, ballObb) && robot.held < robot.maxCapacity){ 
+      const fromLoader = b.fromLoader != null ? b.fromLoader : null;
+      balls.splice(i,1);
+      robot.held++;
+      
+      // Track ball color
+      if (b.color === 'blue') {
+        robot.blueHeld++;
+      } else {
+        robot.redHeld++;
+      }
+      
+      heldEl.textContent = robot.held;
+      blueHeldEl.textContent = robot.blueHeld;
+      redHeldEl.textContent = robot.redHeld;
+      
+      // if it was from a loader, mark loader empty and start its reload timer
+      if(fromLoader !== null){ 
+        const L = matchLoads[fromLoader]; 
+        if(L){ L.hasBall = false; L.reloadTimer = 0; } 
+      }
+      else { // for random field balls, spawn a new random replacement of the same color
+        spawnBall(b.color);
+      }
+    }
+  }
+}
+
+// --- collisions ---
+// Updated handleBounds to use rigid boundary collision
+function handleBounds(robot){ 
+  const robotObb = { cx: robot.x, cy: robot.y, hx: robot.hx, hy: robot.hy, angle: robot.angle };
+  
+  // Check collision with field boundaries
+  for(const boundary of fieldBoundaries){ 
+    const pen = obbObbPenetration(robotObb, aabbToObb(boundary)); 
+    if(pen){ 
+      robot.x += pen.px; 
+      robot.y += pen.py; 
+      robot.vx*=0.9; 
+      robot.vy*=0.9; 
+      robot.angularVel*=0.9; 
+    } 
+  }
+}
+
+// Helper function to check collision with long goal ends (1/7th of each end)
+function checkLongGoalEndCollision(robotObb, g) {
+  const endFraction = 1/7; // 1/7th of each end
+  const endWidth = g.w * endFraction;
+  
+  // Create end sections
+  const leftEnd = { x: g.x, y: g.y, w: endWidth, h: g.h };
+  const rightEnd = { x: g.x + g.w - endWidth, y: g.y, w: endWidth, h: g.h };
+  
+  // Check collision with left end
+  const penLeft = obbObbPenetration(robotObb, aabbToObb(leftEnd));
+  if (penLeft) return penLeft;
+  
+  // Check collision with right end
+  const penRight = obbObbPenetration(robotObb, aabbToObb(rightEnd));
+  if (penRight) return penRight;
+  
+  return null;
+}
+
+function handleCollisions(robot){ 
+  const robotObb = { cx: robot.x, cy: robot.y, hx: robot.hx, hy: robot.hy, angle: robot.angle };
+  
+  // Field objects collisions
+  for(const g of longGoals){ 
+    if (robot.passThroughLongGoals) {
+      // Only check collision with the ends (1/7th of each end)
+      const pen = checkLongGoalEndCollision(robotObb, g);
+      if(pen){ 
+        robot.x += pen.px; robot.y += pen.py; 
+        robot.vx*=0.9; robot.vy*=0.9; robot.angularVel*=0.9; 
+      }
+    } else {
+      // Check collision with entire long goal
+      const pen = obbObbPenetration(robotObb, aabbToObb(g)); 
+      if(pen){ 
+        robot.x += pen.px; robot.y += pen.py; 
+        robot.vx*=0.9; robot.vy*=0.9; robot.angularVel*=0.9; 
+      } 
+    }
+  }
+  
+  for(const mg of middleGoals){ 
+    const other = { cx: mg.cx, cy: mg.cy, hx: mg.len/2, hy: mg.thickness/2, angle: mg.angle }; 
+    const pen = obbObbPenetration(robotObb, other); 
+    if(pen){ 
+      robot.x += pen.px; robot.y += pen.py; 
+      robot.vx*=0.9; robot.vy*=0.9; robot.angularVel*=0.9; 
+    } 
+  }
+  
+  for(const p of parkingAreas){ 
+    const pen = obbObbPenetration(robotObb, aabbToObb(p)); 
+    if(pen){ 
+      robot.x += pen.px; robot.y += pen.py; 
+      robot.vx*=0.9; robot.vy*=0.9; robot.angularVel*=0.9; 
+    } 
+  }
+  
+  for(const L of matchLoads){ 
+    const pen = obbObbPenetration(robotObb, aabbToObb(L)); 
+    if(pen){ 
+      robot.x += pen.px; robot.y += pen.py; 
+      robot.vx*=0.9; robot.vy*=0.9; robot.angularVel*=0.9; 
+    } 
+  }
+}
+
+// Robot-to-robot collision with adjustable push strength
+function handleRobotCollision(robotA, robotB) {
+  if ((!twoPlayerMode && !practiceMode) || (!matchActive && !practiceMode) || countdownActive) return;
+  
+  const robotAObb = { cx: robotA.x, cy: robotA.y, hx: robotA.hx, hy: robotA.hy, angle: robotA.angle };
+  const robotBObb = { cx: robotB.x, cy: robotB.y, hx: robotB.hx, hy: robotB.hy, angle: robotB.angle };
+  
+  const pen = obbObbPenetration(robotAObb, robotBObb);
+  if (!pen) return;
+  
+  // Simple separation - push robots apart
+  const separationFactor = 0.5;
+  robotA.x += pen.px * separationFactor;
+  robotA.y += pen.py * separationFactor;
+  robotB.x -= pen.px * separationFactor;
+  robotB.y -= pen.py * separationFactor;
+  
+  // Calculate collision normal
+  const normal = { x: pen.px, y: pen.py };
+  const len = Math.hypot(normal.x, normal.y);
+  if (len > 0) {
+    normal.x /= len;
+    normal.y /= len;
+  }
+  
+  // Calculate relative velocity
+  const relativeVelocity = {
+    x: robotA.vx - robotB.vx,
+    y: robotA.vy - robotB.vy
+  };
+  
+  // Calculate relative velocity along the normal
+  const velocityAlongNormal = relativeVelocity.x * normal.x + relativeVelocity.y * normal.y;
+  
+  // Do not resolve if velocities are separating
+  if (velocityAlongNormal > 0) return;
+  
+  // Simple collision response - use push strength factor
+  const pushStrengthFactor = pushStrength;
+  const damping = 0.8;
+  
+  // If robots are moving toward each other, cancel out some velocity
+  if (velocityAlongNormal < 0) {
+    // Reduce velocities in the collision direction (scaled by push strength)
+    robotA.vx -= velocityAlongNormal * normal.x * pushStrengthFactor;
+    robotA.vy -= velocityAlongNormal * normal.y * pushStrengthFactor;
+    robotB.vx += velocityAlongNormal * normal.x * pushStrengthFactor;
+    robotB.vy += velocityAlongNormal * normal.y * pushStrengthFactor;
+    
+    // Apply damping to make the collision less bouncy
+    robotA.vx *= damping;
+    robotA.vy *= damping;
+    robotB.vx *= damping;
+    robotB.vy *= damping;
+  }
+  
+  // Add a small amount of angular velocity based on collision
+  const angularFactor = 0.05;
+  robotA.angularVel += (Math.random() - 0.5) * angularFactor;
+  robotB.angularVel += (Math.random() - 0.5) * angularFactor;
+}
+
+// --- simulation ---
+let last = performance.now(); 
+let lastDt = 0;
+
+function step(now){ 
+  const dt = Math.min(0.05,(now-last)/1000); 
+  last = now; 
+  lastDt = dt; 
+  
+  sampleInputs(); 
+  
+  // Update countdown if active
+  if (countdownActive) {
+    updateCountdown(dt);
+  }
+  
+  // Update robot1
+  updateRobot(robot1, dt);
+  handleBounds(robot1);
+  handleCollisions(robot1);
+  handleBalls(robot1, heldEl1, blueHeldEl1, redHeldEl1);
+  updateScoring(robot1, dt, scoreEl1, heldEl1, blueHeldEl1, redHeldEl1);
+  
+  // Update robot2 if in two-player mode
+  if (twoPlayerMode) {
+    updateRobot(robot2, dt);
+    handleBounds(robot2);
+    handleCollisions(robot2);
+    handleBalls(robot2, heldEl2, blueHeldEl2, redHeldEl2);
+    updateScoring(robot2, dt, scoreEl2, heldEl2, blueHeldEl2, redHeldEl2);
+    
+    // Handle robot-to-robot collision
+    handleRobotCollision(robot1, robot2);
+  }
+  
+  // Update ball physics
+  updateBallPhysics(dt);
+  
+  // Update loader respawn logic (only if loaders are enabled)
+  if (loadersEnabled) {
+    for(let li=0; li<matchLoads.length; li++){ 
+      const L = matchLoads[li]; 
+      if(!L.hasBall){ 
+        L.reloadTimer += lastDt; 
+        if(L.reloadTimer >= L.supplyInterval){ 
+          L.reloadTimer = 0; 
+          createLoaderBall(li); 
+        } 
+      } 
+    }
+  }
+  
+  // Update flash effect
+  updateFlashEffect(dt);
+  
+  // Update mode indicator for pass-through
+  updateModeIndicator();
+  
+  draw(); 
+  requestAnimationFrame(step); 
+}
+
+function updateRobot(robot, dt) {
+  const targetVl = robot.leftPower * robot.maxSpeed; 
+  const targetVr = robot.rightPower * robot.maxSpeed; 
+  const v = (targetVl + targetVr)/2; 
+  const omega = (targetVr - targetVl)/(robot.width); 
+  const vxTarget = v*Math.cos(robot.angle); 
+  const vyTarget = v*Math.sin(robot.angle); 
+  
+  robot.vx += (vxTarget - robot.vx) * robot.linearAccel * dt; 
+  robot.vy += (vyTarget - robot.vy) * robot.linearAccel * dt; 
+  robot.angularVel += (omega - robot.angularVel) * robot.angAccel * dt; 
+  
+  robot.x += robot.vx * dt; 
+  robot.y += robot.vy * dt; 
+  robot.angle += robot.angularVel * dt;
+}
+
+function updateFlashEffect(dt) {
+  if (flashRed) {
+    flashTimer += dt;
+    const progress = flashTimer / FLASH_DURATION;
+    redFlash.style.opacity = Math.max(0, 1 - progress);
+    
+    if (flashTimer >= FLASH_DURATION) {
+      flashRed = false;
+      flashTimer = 0;
+      redFlash.style.opacity = 0;
+    }
+  }
+}
+
+function updateModeIndicator() {
+  // Update mode indicator based on practice mode and pass-through states
+  if (practiceMode) {
+    if (robot1.passThroughLongGoals || (twoPlayerMode && robot2.passThroughLongGoals)) {
+      modeIndicator.textContent = 'PRACTICE MODE (Pass-Through ON)';
+      modeIndicator.className = 'mode-indicator pass-through-indicator';
+    } else {
+      modeIndicator.textContent = 'PRACTICE MODE';
+      modeIndicator.className = 'mode-indicator practice-indicator';
+    }
+  } else if (robot1.passThroughLongGoals || (twoPlayerMode && robot2.passThroughLongGoals)) {
+    modeIndicator.textContent = 'Pass-Through ON';
+    modeIndicator.className = 'mode-indicator pass-through-indicator';
+  } else {
+    modeIndicator.textContent = '';
+    modeIndicator.className = 'mode-indicator';
+  }
+}
+
+function updateCountdown(dt) {
+  countdownTimer += dt;
+  if (countdownTimer >= 1) {
+    countdownTimer = 0;
+    countdownValue--;
+    
+    if (countdownValue > 0) {
+      countdownEl.textContent = countdownValue;
+      countdownEl.style.opacity = 1;
+    } else {
+      countdownEl.textContent = "GO!";
+      countdownEl.style.opacity = 1;
+      
+      // Hide countdown after a short delay and start the match timer
+      setTimeout(() => {
+        countdownEl.style.opacity = 0;
+        countdownActive = false;
+        matchActive = true;
+        
+        // Start the match timer
+        timerRunning = true;
+        timerLast = performance.now();
+        document.getElementById('startTimer').textContent = 'Stop Match';
+      }, 500);
+    }
+  }
+}
+
+requestAnimationFrame(step);
+
+// --- scoring update ---
+function updateScoring(robot, dt, scoreEl, heldEl, blueHeldEl, redHeldEl){ 
+  if(!robot.scoring.active) return; 
+  const g = robot.scoring.goal; 
+  const endpoints = getGoalEndpoints(g); 
+  let stillInside = false; 
+  for(const e of endpoints){ 
+    const pen = (e.type==='obb-end') ? 
+      obbObbPenetration({cx:robot.x,cy:robot.y,hx:robot.hx,hy:robot.hy,angle:robot.angle}, e) : 
+      obbObbPenetration({cx:robot.x,cy:robot.y,hx:robot.hx,hy:robot.hy,angle:robot.angle}, aabbToObb(e)); 
+    if(pen) stillInside = true; 
+  } 
+  if(!stillInside){ 
+    robot.held += robot.scoring.blueRemaining + robot.scoring.redRemaining; 
+    robot.blueHeld += robot.scoring.blueRemaining;
+    robot.redHeld += robot.scoring.redRemaining;
+    robot.scoring.active=false; 
+    robot.scoring.blueRemaining=0; 
+    robot.scoring.redRemaining=0; 
+    robot.scoring.timer=0; 
+    robot.scoring.goal=null; 
+    heldEl.textContent = robot.held; 
+    blueHeldEl.textContent = robot.blueHeld;
+    redHeldEl.textContent = robot.redHeld;
+    return; 
+  } 
+  robot.scoring.timer += dt; 
+  
+  // Score blue balls first, then red balls
+  while(robot.scoring.timer >= robot.scoring.perBall && 
+        (robot.scoring.blueRemaining > 0 || robot.scoring.redRemaining > 0)){ 
+    robot.scoring.timer -= robot.scoring.perBall; 
+    
+    if (robot.scoring.blueRemaining > 0) {
+      robot.scoring.blueRemaining--;
+      // Blue team scores blue balls, red team scores red balls
+      if (robot.team === 'blue') {
+        robot.score++;
+      } else {
+        // Red team scoring a blue ball gives point to blue team
+        // For now, we'll just not give a point
+      }
+    } else if (robot.scoring.redRemaining > 0) {
+      robot.scoring.redRemaining--;
+      if (robot.team === 'red') {
+        robot.score++;
+      }
+    }
+    
+    scoreEl.textContent = robot.score; 
+  } 
+  
+  if(robot.scoring.blueRemaining <= 0 && robot.scoring.redRemaining <= 0){ 
+    robot.scoring.active=false; 
+    robot.scoring.goal=null; 
+    robot.scoring.timer=0; 
+  } 
+}
+
+// --- drawing ---
+function draw(){ 
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  
+  // Draw field boundaries
+  ctx.strokeStyle='#2c6'; 
+  ctx.lineWidth=4; 
+  ctx.strokeRect(FIELD_MARGIN_H, FIELD_MARGIN_V, TILE_SIZE * FIELD_WIDTH_TILES, TILE_SIZE * FIELD_HEIGHT_TILES);
+  
+  // Draw field boundaries with rigid hitbox
+  ctx.fillStyle = 'rgba(50, 50, 50, 0.3)';
+  for(const boundary of fieldBoundaries){
+    ctx.fillRect(boundary.x, boundary.y, boundary.w, boundary.h);
+  }
+  
+  // Draw tile grid for reference (optional)
+  ctx.strokeStyle='rgba(100, 100, 100, 0.2)';
+  ctx.lineWidth=1;
+  for(let i = 0; i <= FIELD_WIDTH_TILES; i++) {
+    const x = FIELD_MARGIN_H + i * TILE_SIZE;
+    ctx.beginPath();
+    ctx.moveTo(x, FIELD_MARGIN_V);
+    ctx.lineTo(x, FIELD_MARGIN_V + TILE_SIZE * FIELD_HEIGHT_TILES);
+    ctx.stroke();
+  }
+  for(let i = 0; i <= FIELD_HEIGHT_TILES; i++) {
+    const y = FIELD_MARGIN_V + i * TILE_SIZE;
+    ctx.beginPath();
+    ctx.moveTo(FIELD_MARGIN_H, y);
+    ctx.lineTo(FIELD_MARGIN_H + TILE_SIZE * FIELD_WIDTH_TILES, y);
+    ctx.stroke();
+  }
+  
+  // long goals - draw differently based on pass-through mode
+  for(const g of longGoals){ 
+    // Check if any robot has pass-through enabled
+    const anyPassThrough = robot1.passThroughLongGoals || (twoPlayerMode && robot2.passThroughLongGoals);
+    
+    if (anyPassThrough) {
+      // Draw faded middle section
+      const endFraction = 1/7;
+      const endWidth = g.w * endFraction;
+      const middleWidth = g.w * (1 - 2 * endFraction);
+      
+      // Draw middle section (faded)
+      ctx.fillStyle = g.fadedColor; 
+      ctx.fillRect(g.x + endWidth, g.y, middleWidth, g.h);
+      
+      // Draw ends (solid)
+      ctx.fillStyle = g.originalColor;
+      ctx.fillRect(g.x, g.y, endWidth, g.h); // Left end
+      ctx.fillRect(g.x + g.w - endWidth, g.y, endWidth, g.h); // Right end
+    } else {
+      // Draw normally
+      ctx.fillStyle = g.originalColor; 
+      ctx.fillRect(g.x, g.y, g.w, g.h); 
+    }
+    
+    const endpoints = getGoalEndpoints(g); 
+    for(const e of endpoints){ 
+      ctx.fillStyle='rgba(0,200,255,0.14)'; ctx.fillRect(e.x,e.y,e.w,e.h); 
+      ctx.strokeStyle='rgba(0,200,255,0.9)'; ctx.strokeRect(e.x,e.y,e.w,e.h); 
+    } 
+  }
+  
+  // middle rotated tubes
+  for(const mg of middleGoals){ 
+    ctx.save(); ctx.translate(mg.cx, mg.cy); ctx.rotate(mg.angle); 
+    ctx.fillStyle='#553'; ctx.fillRect(-mg.len/2, -mg.thickness/2, mg.len, mg.thickness); 
+    ctx.restore(); 
+    const eps = getGoalEndpoints(mg); 
+    for(const e of eps){ 
+      ctx.save(); ctx.translate(e.cx, e.cy); ctx.rotate(e.angle); 
+      ctx.fillStyle='rgba(0,200,255,0.14)'; ctx.fillRect(-e.hx, -e.hy, e.hx*2, e.hy*2); 
+      ctx.strokeStyle='rgba(0,200,255,0.9)'; ctx.strokeRect(-e.hx, -e.hy, e.hx*2, e.hy*2); 
+      ctx.restore(); 
+    } 
+  }
+  
+  // parking - color coded by team
+  for(const p of parkingAreas){ 
+    if (p.team === 'blue') {
+      ctx.fillStyle='rgba(0,100,255,0.14)'; 
+      ctx.strokeStyle='rgba(0,100,255,0.95)'; 
+    } else {
+      ctx.fillStyle='rgba(255,50,50,0.14)'; 
+      ctx.strokeStyle='rgba(255,50,50,0.95)'; 
+    }
+    ctx.fillRect(p.x,p.y,p.w,p.h); 
+    ctx.strokeRect(p.x,p.y,p.w,p.h); 
+  }
+  
+  // match loads - color coded by team
+  for(const L of matchLoads){ 
+    if (L.team === 'blue') {
+      ctx.fillStyle='rgba(0,100,200,0.12)'; 
+      ctx.strokeStyle='rgba(0,100,200,0.95)';
+    } else {
+      ctx.fillStyle='rgba(200,50,50,0.12)'; 
+      ctx.strokeStyle='rgba(200,50,50,0.95)';
+    }
+    ctx.fillRect(L.x,L.y,L.w,L.h); 
+    ctx.strokeRect(L.x,L.y,L.w,L.h);
+    
+    // draw little output opening facing center and a visible hitbox at the opening
+    if (L.team === 'blue') {
+      ctx.fillStyle='rgba(0,150,255,0.22)';
+      ctx.strokeStyle='rgba(0,150,255,0.95)';
+    } else {
+      ctx.fillStyle='rgba(255,100,100,0.22)';
+      ctx.strokeStyle='rgba(255,100,100,0.95)';
+    }
+    const op = getLoaderOpening(L); ctx.fillRect(op.x, op.y, op.w, op.h);
+    
+    // highlight hitbox
+    ctx.lineWidth=1; ctx.strokeRect(op.x, op.y, op.w, op.h);
+    
+    // indicate whether loader currently has a ball
+    if(L.hasBall){ 
+      if (L.team === 'blue') {
+        ctx.fillStyle='rgba(0,150,255,0.3)';
+      } else {
+        ctx.fillStyle='rgba(255,100,100,0.3)';
+      }
+      ctx.fillRect(op.x-2, op.y-2, op.w+4, op.h+4); 
+    }
+  }
+  
+  // balls - colored by team
+  for(const b of balls){ 
+    if (b.color === 'blue') {
+      ctx.fillStyle='#4af'; 
+    } else {
+      ctx.fillStyle='#f55';
+    }
+    ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill(); 
+  }
+  
+  // Draw robots
+  drawRobot(robot1);
+  if (twoPlayerMode) drawRobot(robot2);
+  
+  // Draw intake boxes when intake is active
+  if (robot1.intakeActive) {
+    drawIntakeBox(robot1);
+  }
+  if (twoPlayerMode && robot2.intakeActive) {
+    drawIntakeBox(robot2);
+  }
+  
+  // Draw scoring indicators
+  if(robot1.scoring.active){ drawScoringIndicator(robot1); }
+  if(twoPlayerMode && robot2.scoring.active){ drawScoringIndicator(robot2); }
+}
+
+function drawRobot(robot) {
+  const ca=Math.cos(robot.angle), sa=Math.sin(robot.angle); 
+  const hx=robot.length/2, hy=robot.width/2; 
+  const corners = [ 
+    {x: robot.x + hx*ca - hy*sa, y: robot.y + hx*sa + hy*ca}, 
+    {x: robot.x - hx*ca - hy*sa, y: robot.y - hx*sa + hy*ca}, 
+    {x: robot.x - hx*ca + hy*sa, y: robot.y - hx*sa - hy*ca}, 
+    {x: robot.x + hx*ca + hy*sa, y: robot.y + hx*sa - hy*ca} 
+  ]; 
+  
+  ctx.save(); 
+  ctx.beginPath(); 
+  ctx.moveTo(corners[0].x,corners[0].y); 
+  for(let i=1;i<corners.length;i++) ctx.lineTo(corners[i].x,corners[i].y); 
+  ctx.closePath(); 
+  ctx.fillStyle=robot.color; 
+  ctx.fill(); 
+  ctx.strokeStyle='#0ff'; 
+  ctx.lineWidth=1; 
+  ctx.stroke(); 
+  
+  const front = { x: robot.x + Math.cos(robot.angle) * robot.hx, y: robot.y + Math.sin(robot.angle) * robot.hx }; 
+  ctx.beginPath(); 
+  ctx.arc(front.x, front.y, 8, 0, Math.PI*2); 
+  ctx.fillStyle='#06f'; 
+  ctx.fill(); 
+  
+  // Intake indicator (small circle at the back)
+  if (robot.intakeActive) {
+    const backX = robot.x - Math.cos(robot.angle) * (robot.length/2 - 10);
+    const backY = robot.y - Math.sin(robot.angle) * (robot.length/2 - 10);
+    ctx.beginPath();
+    ctx.arc(backX, backY, 6, 0, Math.PI*2);
+    ctx.fillStyle='#0f0';
+    ctx.fill();
+  }
+  
+  // Pass-through indicator (small circle on side)
+  if (robot.passThroughLongGoals) {
+    const sideX = robot.x - Math.sin(robot.angle) * (robot.width/2 - 10);
+    const sideY = robot.y + Math.cos(robot.angle) * (robot.width/2 - 10);
+    ctx.beginPath();
+    ctx.arc(sideX, sideY, 6, 0, Math.PI*2);
+    ctx.fillStyle='#0ff';
+    ctx.fill();
+  }
+  
+  ctx.restore();
+}
+
+// Draw intake box for debugging
+function drawIntakeBox(robot) {
+  const intakeBox = getIntakeBox(robot);
+  
+  ctx.save();
+  ctx.translate(intakeBox.cx, intakeBox.cy);
+  ctx.rotate(intakeBox.angle);
+  
+  // Draw the intake box
+  ctx.fillStyle = robot.team === 'blue' ? 'rgba(0, 255, 255, 0.3)' : 'rgba(255, 100, 100, 0.3)';
+  ctx.fillRect(-intakeBox.hx, -intakeBox.hy, intakeBox.hx * 2, intakeBox.hy * 2);
+  
+  ctx.strokeStyle = robot.team === 'blue' ? '#0ff' : '#f55';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-intakeBox.hx, -intakeBox.hy, intakeBox.hx * 2, intakeBox.hy * 2);
+  
+  ctx.restore();
+}
+
+function drawScoringIndicator(robot) {
+  ctx.fillStyle='rgba(0,255,120,0.12)'; 
+  const eps = getGoalEndpoints(robot.scoring.goal); 
+  for(const z of eps){ 
+    if(z.type==='obb-end'){ 
+      ctx.save(); 
+      ctx.translate(z.cx,z.cy); 
+      ctx.rotate(z.angle); 
+      ctx.fillRect(-z.hx,-z.hy,z.hx*2,z.hy*2); 
+      ctx.restore(); 
+    } else { 
+      ctx.fillRect(z.x,z.y,z.w,z.h); 
+    } 
+  } 
+  ctx.fillStyle='#0f0'; 
+  ctx.font='14px monospace'; 
+  ctx.fillText(`P${robot.id} Scoring: ${robot.scoring.blueRemaining + robot.scoring.redRemaining} left`, 12, canvas.height-18 - (robot.id-1)*20); 
+}
+
+// --- UI bindings ---
+// Player 1 settings
+speedRange1.addEventListener('input', ()=>{ 
+  robot1.maxSpeed = Number(speedRange1.value); 
+  speedVal1.textContent = robot1.maxSpeed; 
+});
+
+accelRange1.addEventListener('input', ()=>{ 
+  robot1.linearAccel = Number(accelRange1.value); 
+  accelVal1.textContent = robot1.linearAccel.toFixed(1); 
+});
+
+angAccelRange1.addEventListener('input', ()=>{ 
+  robot1.angAccel = Number(angAccelRange1.value); 
+  angAccelVal1.textContent = robot1.angAccel.toFixed(1); 
+});
+
+capacityRange1.addEventListener('input', ()=>{ 
+  robot1.maxCapacity = Number(capacityRange1.value); 
+  capacityVal1.textContent = robot1.maxCapacity; 
+  maxCapacityEl1.textContent = robot1.maxCapacity;
+});
+
+// Player 2 settings
+speedRange2.addEventListener('input', ()=>{ 
+  robot2.maxSpeed = Number(speedRange2.value); 
+  speedVal2.textContent = robot2.maxSpeed; 
+});
+
+accelRange2.addEventListener('input', ()=>{ 
+  robot2.linearAccel = Number(accelRange2.value); 
+  accelVal2.textContent = robot2.linearAccel.toFixed(1); 
+});
+
+angAccelRange2.addEventListener('input', ()=>{ 
+  robot2.angAccel = Number(angAccelRange2.value); 
+  angAccelVal2.textContent = robot2.angAccel.toFixed(1); 
+});
+
+capacityRange2.addEventListener('input', ()=>{ 
+  robot2.maxCapacity = Number(capacityRange2.value); 
+  capacityVal2.textContent = robot2.maxCapacity; 
+  maxCapacityEl2.textContent = robot2.maxCapacity;
+});
+
+// Push strength setting
+pushStrengthRange.addEventListener('input', ()=>{ 
+  pushStrength = Number(pushStrengthRange.value); 
+  pushStrengthVal.textContent = pushStrength.toFixed(1); 
+});
+
+document.getElementById('calibrate').addEventListener('click', ()=>{ 
+  alert('Calibration is minimal for this build. Use controller sticks to drive.'); 
+});
+
+document.getElementById('reset').addEventListener('click', ()=>{ 
+  rebuildFieldObjects();
+  
+  // Reset robot states
+  robot1.held = 0; 
+  robot1.blueHeld = 0;
+  robot1.redHeld = 0;
+  // Set passThroughLongGoals to true initially
+  robot1.passThroughLongGoals = true;
+  // Set scoringBlocked to true initially
+  robot1.scoringBlocked = true;
+  robot1.lastB2State = false;
+  robot1.lastB1State = false;
+  robot1.lastKeyScoringSwitch = false;
+  robot1.lastKeyPassThrough = false;
+  heldEl1.textContent = 0; 
+  blueHeldEl1.textContent = 0;
+  redHeldEl1.textContent = 0;
+  robot1.score = 0; 
+  scoreEl1.textContent = 0; 
+  robot1.scoring.active=false; 
+  robot1.scoring.blueRemaining=0; 
+  robot1.scoring.redRemaining=0; 
+  robot1.scoring.timer=0; 
+  robot1.scoring.goal=null; 
+  robot1.intakeActive = false;
+  intakeEl1.textContent = "OFF";
+  intakeEl1.style.color = "#f00";
+  passThroughEl1.textContent = "ON";
+  passThroughEl1.style.color = "#0f0";
+  scoringSwitchEl1.textContent = "BLOCKED";
+  scoringSwitchEl1.style.color = "#f00";
+  
+  robot2.held = 0; 
+  robot2.blueHeld = 0;
+  robot2.redHeld = 0;
+  // Set passThroughLongGoals to true initially
+  robot2.passThroughLongGoals = true;
+  // Set scoringBlocked to true initially
+  robot2.scoringBlocked = true;
+  robot2.lastB2State = false;
+  robot2.lastB1State = false;
+  robot2.lastKeyScoringSwitch = false;
+  robot2.lastKeyPassThrough = false;
+  heldEl2.textContent = 0; 
+  blueHeldEl2.textContent = 0;
+  redHeldEl2.textContent = 0;
+  robot2.score = 0; 
+  scoreEl2.textContent = 0; 
+  robot2.scoring.active=false; 
+  robot2.scoring.blueRemaining=0; 
+  robot2.scoring.redRemaining=0; 
+  robot2.scoring.timer=0; 
+  robot2.scoring.goal=null; 
+  robot2.intakeActive = false;
+  intakeEl2.textContent = "OFF";
+  intakeEl2.style.color = "#f00";
+  passThroughEl2.textContent = "ON";
+  passThroughEl2.style.color = "#0f0";
+  scoringSwitchEl2.textContent = "BLOCKED";
+  scoringSwitchEl2.style.color = "#f00";
+  
+  // Reset timer and countdown
+  matchTimeLeft = matchDuration;
+  matchActive = false;
+  practiceMode = false;
+  practiceToggle.textContent = 'Start Practice Mode';
+  timerRunning = false;
+  countdownActive = false;
+  countdownValue = 3;
+  countdownEl.style.opacity = 0;
+  modeIndicator.textContent = '';
+  modeIndicator.className = 'mode-indicator';
+  document.getElementById('startTimer').textContent = 'Start Match';
+  updateTimerOverlay();
+});
+
+// --- Timer (1:45) ---
+let matchDuration = 105, matchTimeLeft = matchDuration, timerRunning = false, timerLast = null;
+document.getElementById('startTimer').addEventListener('click', ()=>{ 
+  if(!timerRunning && !countdownActive && !practiceMode){ 
+    // Start countdown
+    countdownActive = true;
+    countdownValue = 3;
+    countdownTimer = 0;
+    countdownEl.textContent = countdownValue;
+    countdownEl.style.opacity = 1;
+    
+    // Disable movement during countdown
+    matchActive = false;
+    
+    document.getElementById('startTimer').textContent = 'Starting...'; 
+  } else if (timerRunning) { 
+    timerRunning = false; 
+    matchActive = false;
+    countdownActive = false;
+    countdownEl.style.opacity = 0;
+    document.getElementById('startTimer').textContent = 'Start Match'; 
+  } 
+  updateTimerOverlay(); 
+});
+
+function updateTimer(now){ 
+  if(!timerRunning || practiceMode) return; 
+  const dt = (now - timerLast)/1000; 
+  timerLast = now; 
+  matchTimeLeft = Math.max(0, matchTimeLeft - dt); 
+  
+  // Check for 30-second warning
+  if (matchTimeLeft <= 30 && matchTimeLeft > 29.5 && !flashRed) {
+    flashRed = true;
+    flashTimer = 0;
+  }
+  
+  if(matchTimeLeft <= 0){ 
+    timerRunning = false; 
+    matchActive = false;
+    document.getElementById('startTimer').textContent = 'Start Match'; 
+  } 
+  updateTimerOverlay(); 
+}
+
+function updateTimerOverlay(){ 
+  const mm = Math.floor(matchTimeLeft/60); 
+  const ss = Math.floor(matchTimeLeft%60); 
+  timerOverlay.textContent = `${String(mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; 
+  
+  // Change color when time is low
+  if (matchTimeLeft <= 30) {
+    timerOverlay.style.background = 'rgba(255,0,0,0.45)';
+  } else {
+    timerOverlay.style.background = 'rgba(0,0,0,0.45)';
+  }
+}
+
+(function timerLoop(now){ 
+  if(timerRunning) updateTimer(now); 
+  requestAnimationFrame(timerLoop); 
+})();
+
+// initial fit
+fit();
+</script>
+</body>
+</html>
